@@ -1,3 +1,5 @@
+@import url(http://fonts.googleapis.com/css?family=Raleway:500);
+
 /* Light Way Admin Bootstrap Theme by PrepBootstrap - http://www.prepbootstrap.com */
 body {
   margin-top: 70px;
@@ -11,7 +13,8 @@ body {
 }
 
 .sui-cell {
-    font-family: 'Trebuchet MS';
+  font-family: 'Raleway';
+  font-weight: 500;
 }
 
 /* Nav Messages */
@@ -36,7 +39,8 @@ body {
 }
 
 body {
-  font-family: 'Trebuchet MS';
+  font-family: 'Raleway';
+  font-weight: 500;
   font-size: 14px;
   line-height: 1.42857143;
   color: #333;
@@ -205,4 +209,12 @@ table.tablesorter thead tr th:hover {
 
 .panel :last-child {
     margin-bottom: 0;
+}
+
+.form-control[readonly] {
+    background-color: inherit;
+}
+
+.form-control[readonly][disabled] {
+    background-color: #eee;
 }

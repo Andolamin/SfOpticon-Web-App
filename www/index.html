@@ -5,7 +5,7 @@
 <html lang="en">
 <head>
     <title>PetroSkills SfOption Service</title>
-    <?php include_once('header.html'); ?>
+    <?php include_once(dirname(__FILE__) . '/head.html'); ?>
 
     <!-- you need to include the shieldui css and js assets in order for the charts to work -->
     <link rel="stylesheet" type="text/css" href="http://www.shieldui.com/shared/components/latest/css/shieldui-all.min.css" />
@@ -15,21 +15,7 @@
 </head>
 <body>
     <div id="wrapper">
-        <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">            
-            <div class="navbar-header">
-                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
-                    <span class="sr-only">Toggle navigation</span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <a class="navbar-brand" href="index.html">PetroSkills SfOption Service</a>
-            </div>
-            <div class="collapse navbar-collapse navbar-ex1-collapse">
-                <?php include_once('navigation.html'); ?>
-                <?php include_once('user.html'); ?>
-            </div>
-        </nav>
+        <?php include_once(dirname(__FILE__) . '/header.html'); ?>
 
         <div id="page-wrapper">
             <div class="alert alert-danger alert-dismissable">
