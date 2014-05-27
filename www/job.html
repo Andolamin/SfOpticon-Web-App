@@ -1,0 +1,91 @@
+<?php
+    $root = 'job.html';
+    $paginationSize = 20;
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Job Details - PS SfOpticon</title>
+	<?php include_once('header.html'); ?>
+</head>
+<body>
+    <div id="wrapper">
+        <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">            
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="index.html">PetroSkills SfOption Service</a>
+            </div>
+            <div class="collapse navbar-collapse navbar-ex1-collapse">
+                <?php include_once('navigation.html'); ?>
+                <?php include_once('user.html'); ?>
+            </div>
+        </nav>
+
+        <div id="page-wrapper">
+            <div class="alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                <strong>Mockup:</strong> This page is not yet attached to actual data.
+            </div>
+			<div class="panel panel-info">
+				<div class="panel-heading">
+					<h3 class="panel-title">
+                        Deploy
+                    </h3>
+				</div>
+				<div class="panel-body">
+					Recently Started
+				</div>
+				<div class="progress progress-striped active">
+					<div class="progress-bar"  role="progressbar" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100" style="width: 15%">
+						<span class="sr-only">
+                            15% Complete
+                        </span>
+					</div>
+				</div>
+			</div>
+            <div class="panel panel-info">
+                <!-- Default panel contents -->
+                <div class="panel-heading">Process Log</div>
+                <!-- Table -->
+                <table class="table">
+                    <colgroup>
+                        <col span="1" style="width: 20%;">
+                        <col span="1" style="width: 80%;">
+                    </colgroup>
+                    <tr>
+                        <th>Time</th>
+                        <th>Log</th>
+                    </tr>
+                    <tr>
+                        <td>2014-05-16 12:32:04</td>
+                        <td>Merge Started</td>
+                    </tr>
+                    <tr>
+                        <td>2014-05-16 12:32:03</td>
+                        <td>Scan Complete</td>
+                    </tr>
+                    <tr>
+                        <td>2014-05-16 12:10:52</td>
+                        <td>Scan Started</td>
+                    </tr>
+                    <tr>
+                        <td>2014-05-16 11:52:16</td>
+                        <td>Job Received</td>
+                    </tr>
+                </table>
+            </div>
+            <ul class="pager">
+                <li class="previous<?php echo (isset($_GET['start']) && $_GET['start'] > 0) ? '' : ' disabled';?>"><a href="<?php echo (isset($_GET['start']) && $_GET['start'] > 0) ? 'log.html?start=' . (($_GET['start'] - $paginationSize) < 0 ? 0 : $_GET['start'] - $paginationSize) : '#';?>">&larr; Newer</a></li>
+                <li class="next <?php echo $numRows < ($paginationSize) + 1 ? ' disabled' : '';?>"><a href="<?php echo ($numRows == ($paginationSize + 1) ? 'log.html?start=' . (isset($_GET['start']) ? $_GET['start'] + $paginationSize : $paginationSize) : '#');?>">Older &rarr;</a></li>
+            </ul>
+        </div>
+        <!-- /#page-wrapper -->
+    </div>
+    <!-- /#wrapper -->
+</body>
+</html>

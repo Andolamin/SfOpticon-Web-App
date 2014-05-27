@@ -1,0 +1,164 @@
+<?php
+    $root = 'deploy.html';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Deploy - PS SfOpticon</title>
+	<?php include_once('header.html'); ?>
+    <link rel="stylesheet" type="text/css" href="plugins/datetime/css/datetimepicker.min.css" />
+    <script type="text/javascript">
+        var dateTimeLoaded = false;
+        var dateTimeNeeded = false; // Set up picker immediately for now
+
+        function dateTimeLoad() {
+            console.log('Date/Time plugin loaded');
+            dateTimeLoaded = true;
+            if (dateTimeNeeded) {
+                // Set up the date time picker
+                setUpDateTimePicker();
+            }
+        }
+
+        function setUpDateTimePicker() {
+            console.log('Setting up picker');
+            var now = new Date();
+            now.setSeconds(0);
+            now.setMinutes((((now.getMinutes() + 14.9) / 15 | 0) * 15) % 60);
+            $('#schedulePicker').datetimepicker({
+                pick12HourFormat: true,
+                useSeconds: false,
+                defaultDate: now,
+                minuteStepping: 15,
+                icons: {
+                    time: 'fa fa-clock-o',
+                    date: 'fa fa-calendar',
+                    up:   'glyphicon glyphicon-chevron-up',
+                    down: 'glyphicon glyphicon-chevron-down'
+                },
+                sideBySide: true
+            });
+        }
+
+        function scheduleTypeChanged(inNewValue) {
+            console.log('scheduleTypeChanged');
+            switch(inNewValue) {
+                case 'Now':
+                    $("#schedulePicker")[0].disabled = true;
+                    break;
+                case 'Future':
+                    dateTimeNeeded = true;
+                    if (dateTimeLoaded) {
+                        setUpDateTimePicker();
+                        $("#schedulePicker")[0].disabled = false;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    </script>
+    <script type="text/javascript" src="plugins/moment/moment.min.js"></script>
+    <script type="text/javascript" src="plugins/datetime/js/datetimepicker.min.js" async="async" onload="dateTimeLoad()"></script>
+</head>
+<body>
+    <div id="wrapper">
+        <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">            
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="index.html">PetroSkills SfOption Service</a>
+            </div>
+            <div class="collapse navbar-collapse navbar-ex1-collapse">
+                <?php include_once('navigation.html'); ?>
+                <?php include_once('user.html'); ?>
+            </div>
+        </nav>
+
+        <div id="page-wrapper">
+            <div class="alert alert-danger alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                <strong>Mockup:</strong> This page is not yet attached to actual data.
+            </div>
+            <div class="panel panel-info">
+                <!-- Default panel contents -->
+                <div class="panel-heading">Step 1) Select Organizations</div>
+                <div class="btn-group btn-group-justified">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Source <span class="caret"></span></button>
+                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
+                            <li><a href="#">PS-Salesforce</a></li>
+                            <li><a href="#">Development</a></li>
+                        </ul>
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default dropdown-toggle disabled" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Destination <span class="caret"></span></button>
+                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
+                            <li><a href="#">PS-Salesforce</a></li>
+                            <li><a href="#">Development</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="panel panel-info">
+                <!-- Default panel contents -->
+                <div class="panel-heading">Step 2) Select Action</div>
+                <div class="btn-group btn-group-justified" data-toggle="buttons">
+                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+                        <input type="radio" class="btn btn-default">Compare</button>
+                    </label>
+                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+                        <input type="radio" class="btn btn-default">Deploy</button>
+                    </label>
+                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+                        <input type="radio" class="btn btn-default">Rebase</button>
+                    </label>
+                </div>
+            </div>
+            <div class="panel panel-info">
+                <!-- Default panel contents -->
+                <div class="panel-heading">Step 3) Select Time</div>
+                <div class="btn-group btn-group-justified" data-toggle="buttons">
+                    <label class="scheduleType btn btn-default active" style="border-radius: 0;">
+                        <input type="radio" class="btn btn-default" checked  onchange="scheduleTypeChanged('Now')"><span>Now</span>
+                    </label>
+                    <label class="scheduleType btn btn-default" style="border-radius: 0;">
+                        <input type="radio" class="btn btn-default" onchange="scheduleTypeChanged('Future')"><span>Future</span>
+                    </label>
+                </div>
+                <div class="input-group date">
+                    <span class="input-group-addon" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+                        @
+                    </span>
+                    <input id="schedulePicker" disabled type="text" class="form-control" placeholder="Scheduled Date" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+                </div>
+            </div>
+            <div class="panel panel-info">
+                <!-- Default panel contents -->
+                <div class="panel-heading">Step 4) Go!</div>
+                <div class="btn-group btn-group-justified">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;">Make it so! <span class="fa fa-caret-right"></span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /#page-wrapper -->
+    </div>
+    <!-- /#wrapper -->
+    <script type="text/javascript">
+        /*
+        $('.input-group.date').datepicker({
+            startDate: '-0d',
+            autoclose: true,
+            todayHighlight: true,
+            todayBtn: 'linked'
+        });
+        */
+    </script>
+</body>
+</html>

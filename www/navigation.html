@@ -1,0 +1,7 @@
+<ul class="nav navbar-nav side-nav">
+    <li<?php if (isset($root) && $root == 'index.html') { echo ' class="active"'; } ?>><a href="index.html"><i class="fa fa-bullseye" style="width: 15px;"></i> Dashboard</a></li>
+    <li<?php if (isset($root) && $root == 'deploy.html') { echo ' class="active"'; } ?>><a href="deploy.html"><i class="fa fa-code-fork" style="width: 15px;"></i> Deploy</a></li>
+    <li<?php if (isset($root) && ($root == 'orgs.html' || $root == 'org.html')) { echo ' class="active"'; } ?>><a href="orgs.html"><i class="fa fa-cloud" style="width: 15px;"></i> Orgs</a></li>
+    <li<?php if (isset($root) && ($root == 'jobs.html' || $root == 'job.html')) { echo ' class="active"'; } ?>><a href="jobs.html"><i class="fa fa-briefcase" style="width: 15px;"></i> Jobs</a></li>
+    <li<?php if (isset($root) && $root == 'log.html') { echo ' class="active"'; } ?>><a href="logs.html"><i class="fa fa-code" style="width: 15px;"></i> Audit Log</a></li>
+</ul>

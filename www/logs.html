@@ -1,0 +1,104 @@
+<?php
+    $root = 'log.html';
+    $paginationSize = 20;
+
+    // Prepare our offset values for use
+    if(isset($_GET['start'])) {
+        // Guard against SQL injection by enforcing that $_GET['start'] is a number
+        settype($_GET['start'], 'integer');
+        $nextStart = $_GET['start'] + $paginationSize;
+        $previousStart = $_GET['start'] - $paginationSize;
+        if ($previousStart < 0) {
+            $previousStart = 0;
+        }
+    }
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Audit Logs - PS SfOpticon</title>
+	<?php include_once(dirname(__FILE__) . '/header.html'); ?>
+</head>
+<body>
+    <div id="wrapper">
+        <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="index.html">PetroSkills SfOption Service</a>
+            </div>
+            <div class="collapse navbar-collapse navbar-ex1-collapse">
+                <?php include_once(dirname(__FILE__) . '/navigation.html'); ?>
+                <?php include_once(dirname(__FILE__) . '/user.html'); ?>
+            </div>
+        </nav>
+
+        <div id="page-wrapper">
+            <div class="alert alert-success alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                <strong>Good to go!</strong> This page is fully attached to actual data.
+            </div>
+            <div class="panel panel-info">
+                <!-- Default panel contents -->
+                <div class="panel-heading">Audit Log</div>
+                <!-- Table -->
+                <table class="table">
+                    <colgroup>
+                        <col span="1" style="width: 5%;">
+                        <col span="1" style="width: 15%;">
+                        <col span="1" style="width: 60%;">
+                        <col span="1" style="width: 20%;">
+                    </colgroup>
+                    <tr>
+                        <th>#</th>
+                        <th>Username</th>
+                        <th>Action</th>
+                        <th>Time</th>
+                    </tr>
+                    <?php
+						try {
+							$db_con = connectDBi();
+						} catch (Exception $e) {
+							if ($e->getMessage() == "100") {
+								$error = mysql_error();
+								die("Error connecting to the database");
+							} else if ($e->getMessage() == "101") {
+								$error = mysql_error();
+								die("Error selecting the database");
+							}
+						}
+
+						$dbStr = "SELECT * FROM audit_log WHERE id <= ((SELECT MAX(id) FROM audit_log) - " . (isset($_GET['start']) ? $_GET['start'] : 0) . ") ORDER BY id DESC LIMIT " . ($paginationSize + 1);
+                        $result = $db_con->query($dbStr);
+                        $numRows = $result->num_rows;
+                        $count = 0;
+                        while ($row = $result->fetch_assoc()) {
+                            if ($count < $paginationSize) {
+                    ?>
+                    <tr>
+                        <td><?php echo $row['id']; ?></td>
+                        <td><?php echo $row['username']; ?></td>
+                        <td><?php echo $row['action']; ?></td>
+                        <td><?php echo $row['time']; ?></td>
+                    </tr>
+                    <?php
+                            }
+                            $count++;
+                        }
+                    ?>
+                </table>
+            </div>
+            <ul class="pager">
+                <li class="previous<?php echo (isset($_GET['start']) && $_GET['start'] > 0 ? '' : ' disabled');?>"><a href="<?php echo (isset($previousStart) ? 'logs.html?start=' . $previousStart : '#');?>">&larr; Newer</a></li>
+                <li class="next <?php echo $numRows < ($paginationSize) + 1 ? ' disabled' : '';?>"><a href="<?php echo ($numRows == ($paginationSize + 1) ? 'log.html?start=' . (isset($nextStart) ? $nextStart : $paginationSize) : '#');?>">Older &rarr;</a></li>
+            </ul>
+        </div>
+        <!-- /#page-wrapper -->
+    </div>
+    <!-- /#wrapper -->
+</body>
+</html>
