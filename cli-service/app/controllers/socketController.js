@@ -5,6 +5,11 @@
 var net = require('net');
 var HashMap = require('hashmap').HashMap;
 
+/**
+ * Handle an incoming socket connection
+ *
+ * @param socket
+ */
 function handleSocket(socket) {
     // Store a key to identify the socket
     socket.key = socket.remoteAddress + ":" + socket.remotePort;
@@ -17,6 +22,12 @@ function handleSocket(socket) {
 };
 exports.handleSocket = handleSocket;
 
+/**
+ * Handle incoming data on the socket stream
+ *
+ * @param socket
+ * @returns {Function} Data handler with socket in scope
+ */
 function handleSocketData(socket) {
     return function(data) {
         console.log('(' + socket.key + '): Received command: ', data);
@@ -35,6 +46,13 @@ function handleSocketData(socket) {
     }
 };
 
+
+/**
+ * Handle the socket closing.
+ *
+ * @param socket
+ * @returns {Function} Close handler with socket in scope
+ */
 function handleSocketEnd(socket) {
     return function() {
         console.log('Socket (' + socket.key + ') Disconnected');

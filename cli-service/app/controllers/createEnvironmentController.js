@@ -4,6 +4,7 @@
 var HashMap = require('hashmap').HashMap;
 var mysql = require('mysql');
 
+// Define parameters
 var parameters = {
     name: {
         required: true,
@@ -51,15 +52,25 @@ var parameters = {
     }
 };
 
+
+/**
+ * Handle the create environment command
+ *
+ * @param socket
+ * @param args
+ */
 function handleCommand(socket, args) {
     console.log('(' + socket.key + '): Creating environment from command: ' + args);
-    // socket.write('INFO: Creating environment from command: ' + args + '\r\n');
 
+    // TODO: Create job record in DB
+
+    // Verify that the parameters satisfy the definition
     var params = require('../libs/parameterHelper.js').parametersFromArguments(args.slice(2));
     var passesValidation = require('../libs/parameterHelper.js').argumentsValid(params, parameters);
 
     console.log('(' + socket.key + '): Arguments are ' + (passesValidation ? 'valid' : 'invalid'));
     if (!passesValidation) {
+        // Parameters don't satisfy the definition. Output them and exit.
         var documentation = require('../libs/parameterHelper.js').argumentDocumentation(parameters);
         socket.write('environment create ' + documentation[0] + '\r\n');
         for (var i = 1; i < documentation.length; i++) {
@@ -67,6 +78,9 @@ function handleCommand(socket, args) {
         }
         socket.write('ERROR: Arguments were invalid. See the returned documentation for command structure.\r\n');
         socket.destroy();
+
+        // TODO: Update job record with error
+
         return;
     }
     var settings = require('../settings.js');
@@ -80,5 +94,6 @@ function handleCommand(socket, args) {
     socket.write('SUCCESS: Job started successfully');
     socket.destroy();
 
+    // TODO: Schedule or Process the job
 };
 exports.handleCommand = handleCommand;

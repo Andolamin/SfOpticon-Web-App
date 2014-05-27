@@ -18,12 +18,13 @@ var statusCodes = {
 };
 var defaultPort = 43442;
 
+// Store the arguments in a map of argument/value pairs
 var arguments = new HashMap();
 for (var i = 0; i < process.argv.length; i++) {
     arguments.set(process.argv[i], i);
 }
 
-// Handle help output
+// Output service documentation to console with help flag
 if (arguments.has("-h") || arguments.has("--help")) {
     console.log("Command-line Interface Service for SfOpticon");
     console.log("Provides a Socket Server interface for interacting with SfOpticon on the command-line");
@@ -54,22 +55,19 @@ if (arguments.has("-p") || arguments.has("--port")) {
     portNumber = port;
 }
 
+// Create server
 var server = net.createServer(function(c) {
     socketController.handleSocket(c);
 });
 
+// Handle server error
 server.on('error', function(err) {
-    if ((err.code == 'EADDRINUSE') && portNumber != defaultPort) {
-        console.warn("Specified port is already in use, trying the default port (" + defaultPort + ")");
-        server.listen(defaultPort, function() { //'listening' listener
-            console.log('Server Bound to ' + defaultPort);
-        });
-    } else {
-        console.error("Server exited with error: " + errno.code[err.code].code + ", " + errno.code[err.code].description);
-        exit((err.code == 'EADDRINUSE') ? statusCodes.portOccupied : statusCodes.unknownServerError);
-    }
+    // Log the error and exit the application
+    console.error("Server exited with error: " + errno.code[err.code].code + ", " + errno.code[err.code].description);
+    exit((err.code == 'EADDRINUSE') ? statusCodes.portOccupied : statusCodes.unknownServerError);
 });
 
+// Bind server to port
 server.listen(portNumber, function() {
     console.log('Server Bound to ' + portNumber);
 });
