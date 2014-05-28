@@ -34,9 +34,10 @@ function handleSocketData(socket) {
         var args = data.toString().trim().split(/ +(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/);
         console.log('(' + socket.key + '): Command array: ', args);
 
-        var controller = args[1] + args[0].charAt(0).toUpperCase() + args[0].slice(1) + 'Controller';
+        var controller = args[0] + args[1].charAt(0).toUpperCase() + args[1].slice(1) + 'Controller';
         try {
-            require('./' + controller + '.js').handleCommand(socket, args);
+            var controller = require('./' + controller + '.js')
+            new controller().handleCommand(socket, args);
         } catch(err) {
             console.log(err);
             console.warn('(' + socket.key + '): Attempted to execute a command with no controller (' + controller + ')');

@@ -2,75 +2,104 @@
 
 - Install Ubuntu Server
 - [VM] Install Guest Additions
-  - Host+D
-  - sudo mount /dev/cdrom /media/cdrom
-  - sudo apt-get update
-  - sudo apt-get install -y dkms build-essential linux-headers-generic linux-headers-$(uname -r)
-  - sudo /media/cdrom/VBoxLinuxAdditions.run
+	- Host+D
+	- sudo mount /dev/cdrom /media/cdrom
+	- sudo apt-get update
+	- sudo apt-get install -y dkms build-essential linux-headers-generic linux-headers-$(uname -r)
+	- sudo /media/cdrom/VBoxLinuxAdditions.run
 - Install Web App
-  - Install LAMP
-    - sudo apt-get update
-    - sudo apt-get install lamp-server^
-      - mysql root password (B:D>hx=E>bz!42ZbZy/Z)
+	- Install LAMP
+  		- sudo apt-get update
+		- sudo apt-get install lamp-server^
+      	- mysql root password (B:D>hx=E>bz!42ZbZy/Z)
     - Set php to development mode
-      - sudo vi /etc/php5/apache2/php.ini
-        - expose_php = Off
-        - display_errors = On
-        - display_startup_errors = On
-      - sudo apt-get install php5-curl
-      - sudo service apache2 restart
-    - Enable mod_rewrite
-      - sudo a2enmod rewrite
-      - sudo service apache2 restart
-  - [VM] Install Hamachi
-    - sudo mkdir /install
-    - cd /install
-    - sudo wget -O hamachi.deb [hamachiURL]
-      - https://secure.logmein.com/labs/
-    - sudo dpkg -i hamachi.deb
-    - sudo apt-get -f install
-  - [VM] Join Hamachi VPN
-    - sudo hamachi login
-    - sudo hamachi set-nick SfOpticon-Server
-    - sudo hamachi do-join [network id]
-      - 208-616-261
-  - Install phpmyadmin
-    - sudo apt-get install phpmyadmin
-      - Configure Webserver automatically: apache2
-      - Configure database: yes
-        - mysql root password specified during LAMP install
-      - Specify application password (JHkE64QfV6cLFwRLuRYR)
-    - Enable mcrypt
-      - sudo php5enmod mcrypt
-      - sudo service apach2 restart
-    - Import CLIService database
-      - Create CLIService database
-      - Import CLIService.sql to CLIService database
-  - [VM] Set up shared folders
-    - Use VM GUI to create read-only auto-mount permanent shared folder
-    - reboot with sudo reboot
-    - Add apache user to group
-      - sudo usermod -a -G vboxsf www-data
-    - Clear the www directory
-      - sudo mkdir /install/www/
-      - sudo mv /var/www/html/*.* /intstall/www/
-    - Symlink to html
-      - sudo rmdir /var/www/html
-      - sudo ln -s /media/sf_www /var/www/html
-    - Configure apache
-      - sudo vi /etc/apache2/apache2.conf
-        - Create directory configuration for /var/www/html/
-          - Options FollowSymLinks
-          - AllowOverride all
-      - sudo service apache2 restart
-  - [VPS] Upload the web service
-    - Configure apache
-      - sudo vi /etc/apache2/apache2.conf
-        - Create directory configuration for /var/www/html/
-          - AllowOverride all
-      - sudo service apache2 restart
-    - Upload www directory contents to /var/www/html
+      	- sudo vi /etc/php5/apache2/php.ini
+        	- expose_php = Off
+        	- display_errors = On
+        	- display_startup_errors = On
+      	- sudo apt-get install php5-curl
+      	- sudo service apache2 restart
+	- Enable mod_rewrite
+      	- sudo a2enmod rewrite
+      	- sudo service apache2 restart
+  	- [VM] Install Hamachi
+    	- sudo mkdir /install
+    	- cd /install
+    	- sudo wget -O hamachi.deb [hamachiURL]
+      		- https://secure.logmein.com/labs/
+		- sudo dpkg -i hamachi.deb
+    	- sudo apt-get -f install
+  	- [VM] Join Hamachi VPN
+    	- sudo hamachi login
+    	- sudo hamachi set-nick SfOpticon-Server
+    	- sudo hamachi do-join [network id]
+      		- 208-616-261
+  	- Install phpmyadmin
+	    - sudo apt-get install phpmyadmin
+			- Configure Webserver automatically: apache2
+		    - Configure database: yes
+		     	- mysql root password specified during LAMP install
+		    - Specify application password (JHkE64QfV6cLFwRLuRYR)
+    	- Enable mcrypt
+      		- sudo php5enmod mcrypt
+      		- sudo service apach2 restart
+    	- Import CLIService database
+      		- Create CLIService database
+      		- Import CLIService.sql to CLIService database
+  	- [VM] Set up shared folders
+	    - Use VM GUI to create read-only auto-mount permanent shared folder
+	    - reboot with sudo reboot
+	    - Add apache user to group
+	      	- sudo usermod -a -G vboxsf www-data
+	    - Clear the www directory
+		      - sudo mkdir /install/www/
+		      - sudo mv /var/www/html/*.* /intstall/www/
+	    - Symlink to html
+			- sudo rmdir /var/www/html
+	      	- sudo ln -s /media/sf_www /var/www/html
+	    - Configure apache
+		    - sudo vi /etc/apache2/apache2.conf
+			- Create directory configuration for /var/www/html/
+	        	- Options FollowSymLinks
+		    	- AllowOverride all
+      		- sudo service apache2 restart
+	- [VPS] Upload the web service
+		- Configure apache
+			- sudo vi /etc/apache2/apache2.conf
+        		- Create directory configuration for /var/www/html/
+          		- AllowOverride all
+      		- sudo service apache2 restart
+    	- Upload www directory contents to /var/www/html
 - Install CLI wrapper service
-  - Install node.js
-    - sudo apt-get install nodejs npm nodejs-legacy
+	- Install node.js
+		- sudo apt-get install nodejs npm nodejs-legacy
+	- Install forever
+    	- sudo npm install forever -g
+	- [VM] Set up shared folders
+		- Use VM GUI to create read-only auto-mount permanent shared folder
+		- reboot with sudo reboot
+		- Link service directory
+			- sudo ln -s /media/sf_cli-service/ /cli-service
+	- [VPS] Set up service
+		- Upload the cli-service to /cli-service
+		- Install cli-service
+			- cd /cli-service
+			- sudo npm install 
+	- Start service with forever
+		- cd /cli-service
+		- sudo forever start service.js -w
 - Install SfOpticon
+	- [VM] Set up shared folders
+		- Use VM GUI to create read-only auto-mount permanent shared folder
+		- reboot with sudo reboot
+		- Link service directory
+			- sudo ln -s /media/sf_sfopticon/ /sfopticon
+	- [VPS] Upload sfopticon files to /sfopticon
+	- Install dependencies
+		- sudo apt-get update
+		- sudo apt-get install ruby
+		- sudo gem install bundler
+	- Install sfopticon
+		- cd /sfopticon
+		- sudo bundle install
+		- sudo rake setup_db
