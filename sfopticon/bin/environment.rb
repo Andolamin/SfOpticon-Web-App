@@ -62,7 +62,7 @@ class EnvironmentCLI < Thor
     puts "   Username: #{env.username}"
     puts "   Password: #{env.password}"
     puts " Production: #{env.production}"
-	puts "     Locked: #{env.locked}"
+    puts "     Locked: #{env.locked}"
   end
 
   option :org, :type => :string, :required => true
@@ -182,6 +182,7 @@ class EnvironmentCLI < Thor
       env = SfOpticon::Environment.create(opts_copy)
     rescue Exception => e
       puts "Error creating remote repository. " + e.message
+	  puts e.backtrace
       puts "Attempting to rollback local changes..."
 
       #SfOpticon::Environment.destroy(env) rescue nil

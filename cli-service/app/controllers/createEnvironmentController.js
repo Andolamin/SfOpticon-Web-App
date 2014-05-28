@@ -25,19 +25,19 @@ function CreateEnvironmentController() {
             description: 'Flag for if this org is production. Will be ignored if a production org is already set up.'
         },
         username: {
-            required: false,
+            required: true,
             dependency: 'userSecurityToken',
             type: 'string',
             description: 'The current user\'s username for this organization.'
         },
         password: {
-            required: false,
+            required: true,
             dependency: 'userSecurityToken',
             type: 'string',
             description: 'The current user\'s password for this organization.'
         },
         token: {
-            required: false,
+            required: true,
             dependency: 'userSecurityToken',
             type: 'string',
             description: 'The current user\'s security token for this organization.'
@@ -53,6 +53,65 @@ function CreateEnvironmentController() {
             description: 'The current user\'s production security token. Used for security storing organization credentials.'
         }
     };
+
+    this.createEnvironentProgressDef = [
+        {
+            trigger: 'Host configured to',
+            progress: 5.00,
+            message: 'Started',
+            always: true
+        },
+        {
+            trigger: 'Creating repository',
+            progress: 6.00,
+            message: 'Creating repository',
+            always: false
+        },
+        {
+            trigger: 'Creating branch',
+            progress: 10.00,
+            message: 'Creating branch',
+            always: true
+        },
+        {
+            trigger: 'Host configured to',
+            progress: 20.00,
+            message: 'SCM set up',
+            always: true
+        },
+        {
+            trigger: 'Gathering',
+            progress: 25.00,
+            message: 'Scanning metadata',
+            always: true
+        },
+        {
+            trigger: 'Host configured to',
+            progress: 50.00,
+            message: 'Metadata scanned',
+            always: true
+        },
+        {
+            trigger: 'Retrieving',
+            progress: 55.00,
+            message: 'Fetching metadata',
+            always: true
+        },
+        {
+            trigger: 'Pushing to',
+            progress: 90.00,
+            message: 'Storing metadata',
+            always: true
+        },
+        {
+            trigger: 'Created',
+            progress: 100.00,
+            message: 'Complete',
+            always: true
+        }
+    ];
+    this.lastProgress = -1;
+
     this.socket = null;
     this.params = null;
     this.connection = null;
@@ -88,6 +147,7 @@ CreateEnvironmentController.prototype.handleCommand = function handleCommand(soc
 };
 
 CreateEnvironmentController.prototype.startOrScheduleJob = function startOrScheduleJob() {
+    var i;
 //    this.socket.write('Job ID: ' + this.jobId + '\r\n');
 //    this.socket.destroy();
     console.log('(' + this.socket.key + '): Job ID: ' + this.jobId + '\r\n');
@@ -105,7 +165,7 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
         // Parameters don't satisfy the definition. Output them and exit.
         var documentation = require('../libs/parameterHelper.js').argumentDocumentation(this.paramDefinition);
         this.socket.write('create environment ' + documentation[0] + '\r\n');
-        for (var i = 1; i < documentation.length; i++) {
+        for (i = 1; i < documentation.length; i++) {
             this.socket.write(documentation[i] + '\r\n');
         }
         this.socket.write('ERROR: Arguments were invalid. See the returned documentation for command structure.\r\n');
@@ -113,25 +173,74 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
 
         // Update job record with error
         this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", 'Invalid Parameters', NOW());");
-        this.connection.query("UPDATE `job` SET `progress` = 100.0, `status` = 'Failed: Invalid Parameters'");
+        this.connection.query("UPDATE `job` SET `progress` = 100.0, `status` = 'Failed: Invalid Parameters' WHERE `ID` = " + this.jobId);
         this.connection.end();
     } else {
-        this.socket.write('SUCCESS: Job received successfully');
+        this.socket.write('SUCCESS: Job received successfully: ' + this.jobId + '\r\n');
         this.socket.destroy();
 
-        // TODO: Process the job
-        /*
-        var exec = require('child_process').exec;
-        var child = exec('dir', function (error, stdout, stderr) {
-            console.log('stdout: ' + stdout);
-            console.log('stderr: ' + stderr);
-            if (error !== null) {
-                console.log('exec error: ' + error);
-            }
-        });
-        */
-    }
-}
+        // Process the job
+        var spawn = require('child_process').spawn;
+        var sfArgs = [
+            'bin/environment.rb',
+            'create',
+            '--name',
+            this.params.get('name'),
+            '--host',
+            this.params.get('location'),
+            '--username',
+            this.params.get('username'),
+            '--password',
+            this.params.get('password'),
+            '--securitytoken',
+            this.params.get('token')
+        ];
+        if (this.params.has('production') && this.params.get('production') == 'true') {
+            sfArgs.push('--production');
+        }
 
+        var child = spawn('ruby',
+            sfArgs,
+            {
+                cwd: '/sfopticon'
+            });
+        child.stdout.on('data', function(data) {
+            this.handleSfOpticonData(data);
+            console.log('stdout: ' + data);
+        }.bind(this));
+        child.stderr.on('data', function(data) {
+            this.handleSfOpticonData(data);
+            console.log('stderr: ' + data);
+        }.bind(this));
+
+        child.on('exit', function() {
+            if (this.lastProgress < this.createEnvironentProgressDef.length - 1) {
+                this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", 'Job Failed', NOW());");
+                this.connection.query("UPDATE `job` SET `progress` = 100.00, `status` = 'Failed: Job Failed' WHERE `ID` = " + this.jobId);
+            }
+        }.bind(this));
+    }
+};
+
+CreateEnvironmentController.prototype.handleSfOpticonData = function handleSfOpticonData(data) {
+    var progress = this.lastProgress + 1;
+    if (progress >= this.createEnvironentProgressDef.length) {
+        return;
+    }
+    while (true) {
+        if (data.toString().indexOf(this.createEnvironentProgressDef[progress].trigger) != -1) {
+            // Found our trigger
+            this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", '" + this.createEnvironentProgressDef[progress].message + "', NOW());");
+            this.connection.query("UPDATE `job` SET `progress` = " + this.createEnvironentProgressDef[progress].progress + ", `status` = '" + this.createEnvironentProgressDef[progress].message + "' WHERE `ID` = " + this.jobId);
+            this.lastProgress = progress;
+            break;
+        } else if (this.createEnvironentProgressDef[progress].always == true) {
+            // Can't continue until we satisfy this trigger
+            break;
+        }
+        // Didn't satisfy the trigger but it wasn't required, so skip it
+        progress++;
+    }
+};
 
 module.exports = CreateEnvironmentController;

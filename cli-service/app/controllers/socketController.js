@@ -34,14 +34,14 @@ function handleSocketData(socket) {
         var args = data.toString().trim().split(/ +(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/);
         console.log('(' + socket.key + '): Command array: ', args);
 
-        var controller = args[0] + args[1].charAt(0).toUpperCase() + args[1].slice(1) + 'Controller';
+        var controllerName = args[0] + args[1].charAt(0).toUpperCase() + args[1].slice(1) + 'Controller';
         try {
-            var controller = require('./' + controller + '.js')
+            var controller = require('./' + controllerName + '.js')
             new controller().handleCommand(socket, args);
         } catch(err) {
-            console.log(err);
-            console.warn('(' + socket.key + '): Attempted to execute a command with no controller (' + controller + ')');
-            socket.write('ERROR: Unable to find controller for received command (' + controller + ')\r\n');
+            console.warn(err.message);
+            console.warn('(' + socket.key + '): Attempted to execute a command with no controller (' + controllerName + ')');
+            socket.write('ERROR: Unable to find controller for received command (' + controllerName + ')\r\n');
             socket.destroy();
         }
     }

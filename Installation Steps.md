@@ -87,19 +87,32 @@
 			- sudo npm install 
 	- Start service with forever
 		- cd /cli-service
-		- sudo forever start service.js -w
+		- sudo forever start -w service.js
 - Install SfOpticon
 	- [VM] Set up shared folders
-		- Use VM GUI to create read-only auto-mount permanent shared folder
+		- Use VM GUI to create auto-mount permanent shared folder
 		- reboot with sudo reboot
 		- Link service directory
 			- sudo ln -s /media/sf_sfopticon/ /sfopticon
 	- [VPS] Upload sfopticon files to /sfopticon
+	- Update application settings
+		- cd /sfopticon
+		- sudo vi application.yml
+			- set mysql password (picked during LAMP install)
+		- Set up git
+			- sudo git config --global http.sslverify false
+			- 
 	- Install dependencies
 		- sudo apt-get update
 		- sudo apt-get install ruby
+		- sudo apt-get install ruby-dev
 		- sudo gem install bundler
+		- sudo apt-get install git-core
+		- sudo apt-get install libmysqlclient-dev
+		- sudo apt-get install libxml2-dev
+		- sudo apt-get install libxslt-dev
+		- sudo gem install nokogiri
 	- Install sfopticon
 		- cd /sfopticon
-		- sudo bundle install
-		- sudo rake setup_db
+		- bundle install
+		- rake setup_db
