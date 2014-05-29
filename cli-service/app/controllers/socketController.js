@@ -17,6 +17,7 @@ function handleSocket(socket) {
     // Register event listeners
     socket.on('data', handleSocketData(socket));
     socket.on('end', handleSocketEnd(socket));
+    socket.on('error', handleSocketError);
     console.log('Signalling client (' + socket.key + ') to proceed')
     socket.write('Ready!\r\n');
 };
@@ -59,3 +60,11 @@ function handleSocketEnd(socket) {
         console.log('Socket (' + socket.key + ') Disconnected');
     };
 };
+
+function handleSocketError(err) {
+    if (err.code != 'ECONNRESET' && err.code != 'EPIPE') {
+        // Ignore ECONNRESET and EPIPE. Everything else (for now) should be fatal.
+        console.error(err.code);
+        throw err;
+    }
+}

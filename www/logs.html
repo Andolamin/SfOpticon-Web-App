@@ -57,8 +57,10 @@
 								die("Error selecting the database");
 							}
 						}
-
-						$dbStr = "SELECT * FROM audit_log WHERE id <= ((SELECT MAX(id) FROM audit_log) - " . (isset($_GET['start']) ? $_GET['start'] : 0) . ") ORDER BY id DESC LIMIT " . ($paginationSize + 1);
+                        if (!isset($_GET['start'])) {
+                            $_GET['start'] = 0;
+                        }
+						$dbStr = "SELECT * FROM audit_log WHERE 1 ORDER BY id DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
                         $result = $db_con->query($dbStr);
                         $numRows = $result->num_rows;
                         $count = 0;
@@ -80,7 +82,7 @@
             </div>
             <ul class="pager">
                 <li class="previous<?php echo (isset($_GET['start']) && $_GET['start'] > 0 ? '' : ' disabled');?>"><a href="<?php echo (isset($previousStart) ? 'logs.html?start=' . $previousStart : '#');?>">&larr; Newer</a></li>
-                <li class="next <?php echo $numRows < ($paginationSize) + 1 ? ' disabled' : '';?>"><a href="<?php echo ($numRows == ($paginationSize + 1) ? 'log.html?start=' . (isset($nextStart) ? $nextStart : $paginationSize) : '#');?>">Older &rarr;</a></li>
+                <li class="next <?php echo $numRows < ($paginationSize) + 1 ? ' disabled' : '';?>"><a href="<?php echo ($numRows == ($paginationSize + 1) ? 'logs.html?start=' . (isset($nextStart) ? $nextStart : $paginationSize) : '#');?>">Older &rarr;</a></li>
             </ul>
         </div>
         <!-- /#page-wrapper -->

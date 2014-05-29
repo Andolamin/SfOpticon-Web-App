@@ -57,55 +57,55 @@ function CreateEnvironmentController() {
     this.createEnvironentProgressDef = [
         {
             trigger: 'Host configured to',
-            progress: 5.00,
+            progress: 5,
             message: 'Started',
             always: true
         },
         {
             trigger: 'Creating repository',
-            progress: 6.00,
+            progress: 6,
             message: 'Creating repository',
             always: false
         },
         {
             trigger: 'Creating branch',
-            progress: 10.00,
+            progress: 10,
             message: 'Creating branch',
             always: true
         },
         {
             trigger: 'Host configured to',
-            progress: 20.00,
+            progress: 20,
             message: 'SCM set up',
             always: true
         },
         {
             trigger: 'Gathering',
-            progress: 25.00,
+            progress: 25,
             message: 'Scanning metadata',
             always: true
         },
         {
             trigger: 'Host configured to',
-            progress: 50.00,
+            progress: 50,
             message: 'Metadata scanned',
             always: true
         },
         {
             trigger: 'Retrieving',
-            progress: 55.00,
+            progress: 55,
             message: 'Fetching metadata',
             always: true
         },
         {
             trigger: 'Pushing to',
-            progress: 90.00,
+            progress: 90,
             message: 'Storing metadata',
             always: true
         },
         {
             trigger: 'Created',
-            progress: 100.00,
+            progress: 100,
             message: 'Complete',
             always: true
         }
@@ -137,7 +137,7 @@ CreateEnvironmentController.prototype.handleCommand = function handleCommand(soc
             if (err) {
                 console.log('(' + this.socket.key + '): MySQL error: ' + err.message);
                 this.socket.write('ERROR: Error starting job');
-                this.socket.destroy();
+//                this.socket.destroy();
                 this.connection.end();
             } else {
                 this.jobId = result.insertId;
@@ -150,7 +150,7 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
     var i;
 //    this.socket.write('Job ID: ' + this.jobId + '\r\n');
 //    this.socket.destroy();
-    console.log('(' + this.socket.key + '): Job ID: ' + this.jobId + '\r\n');
+    console.log('(' + this.socket.key + '): Job ID: ' + this.jobId);
     this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", 'Received', NOW())",
         function(err) {
             if (err) {
@@ -164,20 +164,20 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
     if (!passesValidation) {
         // Parameters don't satisfy the definition. Output them and exit.
         var documentation = require('../libs/parameterHelper.js').argumentDocumentation(this.paramDefinition);
-        this.socket.write('create environment ' + documentation[0] + '\r\n');
-        for (i = 1; i < documentation.length; i++) {
-            this.socket.write(documentation[i] + '\r\n');
-        }
-        this.socket.write('ERROR: Arguments were invalid. See the returned documentation for command structure.\r\n');
-        this.socket.destroy();
+//        this.socket.write('create environment ' + documentation[0] + '\r\n');
+//        for (i = 1; i < documentation.length; i++) {
+//            this.socket.write(documentation[i] + '\r\n');
+//        }
+        this.socket.write('ERROR: Arguments were invalid. See the returned documentation for command structure.\n');
+//        this.socket.destroy();
 
         // Update job record with error
         this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", 'Invalid Parameters', NOW());");
-        this.connection.query("UPDATE `job` SET `progress` = 100.0, `status` = 'Failed: Invalid Parameters' WHERE `ID` = " + this.jobId);
+        this.connection.query("UPDATE `job` SET `progress` = 100, `status` = 'Failed: Invalid Parameters' WHERE `ID` = " + this.jobId);
         this.connection.end();
     } else {
-        this.socket.write('SUCCESS: Job received successfully: ' + this.jobId + '\r\n');
-        this.socket.destroy();
+        this.socket.write('SUCCESS: Job received successfully: ' + this.jobId + '\n');
+//        this.socket.destroy();
 
         // Process the job
         var spawn = require('child_process').spawn;

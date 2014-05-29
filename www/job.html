@@ -1,6 +1,17 @@
 <?php
     $root = 'job.html';
-    $paginationSize = 20;
+    $paginationSize = 10;
+
+    // Prepare our offset values for use
+    if(isset($_GET['start'])) {
+        // Guard against SQL injection by enforcing that $_GET['start'] is a number
+        settype($_GET['start'], 'integer');
+        $nextStart = $_GET['start'] + $paginationSize;
+        $previousStart = $_GET['start'] - $paginationSize;
+        if ($previousStart < 0) {
+            $previousStart = 0;
+        }
+    }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -9,69 +20,118 @@
     <?php include_once(dirname(__FILE__) . '/head.html'); ?>
 </head>
 <body>
-    <div id="wrapper">
-        <?php include_once(dirname(__FILE__) . '/header.html'); ?>
+<div id="wrapper">
+    <?php include_once(dirname(__FILE__) . '/header.html'); ?>
 
-        <div id="page-wrapper">
-            <div class="alert alert-danger alert-dismissable">
-                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Mockup:</strong> This page is not yet attached to actual data.
-            </div>
-			<div class="panel panel-info">
-				<div class="panel-heading">
-					<h3 class="panel-title">
-                        Deploy
-                    </h3>
-				</div>
-				<div class="panel-body">
-					Recently Started
-				</div>
-				<div class="progress progress-striped active">
-					<div class="progress-bar"  role="progressbar" aria-valuenow="15" aria-valuemin="0" aria-valuemax="100" style="width: 15%">
-						<span class="sr-only">
-                            15% Complete
-                        </span>
-					</div>
-				</div>
-			</div>
-            <div class="panel panel-info">
-                <!-- Default panel contents -->
-                <div class="panel-heading">Process Log</div>
-                <!-- Table -->
-                <table class="table">
-                    <colgroup>
-                        <col span="1" style="width: 20%;">
-                        <col span="1" style="width: 80%;">
-                    </colgroup>
-                    <tr>
-                        <th>Time</th>
-                        <th>Log</th>
-                    </tr>
-                    <tr>
-                        <td>2014-05-16 12:32:04</td>
-                        <td>Merge Started</td>
-                    </tr>
-                    <tr>
-                        <td>2014-05-16 12:32:03</td>
-                        <td>Scan Complete</td>
-                    </tr>
-                    <tr>
-                        <td>2014-05-16 12:10:52</td>
-                        <td>Scan Started</td>
-                    </tr>
-                    <tr>
-                        <td>2014-05-16 11:52:16</td>
-                        <td>Job Received</td>
-                    </tr>
-                </table>
-            </div>
-            <ul class="pager">
-                <li class="previous<?php echo (isset($_GET['start']) && $_GET['start'] > 0) ? '' : ' disabled';?>"><a href="<?php echo (isset($_GET['start']) && $_GET['start'] > 0) ? 'log.html?start=' . (($_GET['start'] - $paginationSize) < 0 ? 0 : $_GET['start'] - $paginationSize) : '#';?>">&larr; Newer</a></li>
-                <li class="next <?php echo $numRows < ($paginationSize) + 1 ? ' disabled' : '';?>"><a href="<?php echo ($numRows == ($paginationSize + 1) ? 'log.html?start=' . (isset($_GET['start']) ? $_GET['start'] + $paginationSize : $paginationSize) : '#');?>">Older &rarr;</a></li>
-            </ul>
+    <div id="page-wrapper">
+        <div class="alert alert-success alert-dismissable">
+            <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+            <strong>Good to go!</strong> This page is fully attached to actual data.
         </div>
-        <!-- /#page-wrapper -->
+<?php
+    if (!isset($_GET['jobId'])) {
+?>
+        <div class="alert alert-danger">
+            <strong>Error:</strong> No job specified.
+        </div>
+<?php
+    } else {
+        try {
+            $db_con = connectDBi();
+        } catch (Exception $e) {
+            if ($e->getMessage() == "100") {
+                $error = mysql_error();
+                die("Error connecting to the database");
+            } else if ($e->getMessage() == "101") {
+                $error = mysql_error();
+                die("Error selecting the database");
+            }
+        }
+        // Guard against injection by enforcing that the orgId is a number
+        settype($_GET['jobId'], "integer");
+        $dbStr = "SELECT * FROM `job` WHERE `ID` = " . $_GET['jobId'];
+        $result = $db_con->query($dbStr);
+        if ($result->num_rows == 0) {
+?>
+        <div class="alert alert-danger">
+            <strong>Error:</strong> No job found for specified ID.
+        </div>
+<?php
+        } else {
+            $row = $result->fetch_assoc();
+            $status = 1; // Default to in progress
+            if ($row['progress'] == 100) {
+                // Complete, lets check for good/bad
+                if (strpos($row['status'], 'Failed') !== false) {
+                    $status = 2;
+                } else if (strpos($row['status'], 'Complete') !== false) {
+                    $status = 3;
+                }
+            }
+?>
+        <div class="panel <?php echo ($status == 1 ? 'panel-info' : ($status == 2 ? 'panel-danger' : 'panel-success')); ?>">
+            <div class="panel-heading">
+                <h3 class="panel-title">
+                    <?php echo $row['type']; ?>
+                </h3>
+            </div>
+            <div class="panel-body">
+                <?php echo $row['status']; ?>
+            </div>
+            <div class="progress <?php echo $row['progress'] < 100 ? 'progress-striped active' : ''; ?>">
+                <div class="progress-bar <?php echo ($status == 1 ? 'progress-bar-info' : ($status == 2 ? 'progress-bar-danger' : 'progress-bar-success')); ?>"  role="progressbar" aria-valuenow="<?php echo $row['progress']; ?>" aria-valuemin="0" aria-valuemax="100" style="width: <?php echo $row['progress']; ?>%">
+						<span class="sr-only">
+                            <?php echo $row['progress']; ?>% Complete
+                        </span>
+                </div>
+            </div>
+        </div>
+        <div class="panel panel-info">
+            <!-- Default panel contents -->
+            <div class="panel-heading">Process Log</div>
+            <!-- Table -->
+            <table class="table">
+                <colgroup>
+                    <col span="1" style="width: 20%;">
+                    <col span="1" style="width: 80%;">
+                </colgroup>
+                <tr>
+                    <th>Time</th>
+                    <th>Log</th>
+                </tr>
+<?php
+            if (!isset($_GET['start'])) {
+                $_GET['start'] = 0;
+            }
+            $dbStr = "SELECT * FROM `jobLog` WHERE `jobID` = " . $_GET['jobId'] . " ORDER BY `time` DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
+            $result = $db_con->query($dbStr);
+            $numRows = $result->num_rows;
+            $count = 0;
+            while ($log = $result->fetch_assoc()) {
+                if ($count < $paginationSize) {
+?>
+                <tr>
+                    <td><?php echo $log['time']; ?></td>
+                    <td><?php echo $log['text']; ?></td>
+                </tr>
+<?php
+                }
+                $count++;
+            }
+?>
+            </table>
+        </div>
+        <ul class="pager">
+            <li class="previous<?php echo (isset($_GET['start']) && $_GET['start'] > 0 ? '' : ' disabled');?>"><a href="<?php echo (isset($previousStart) ? 'job.html?jobId=' . $_GET['jobId'] . '&start=' . $previousStart : '#');?>">&larr; Newer</a></li>
+            <li class="next <?php echo $numRows < ($paginationSize) + 1 ? ' disabled' : '';?>"><a href="<?php echo ($numRows == ($paginationSize + 1) ? 'job.html?jobId=' . $_GET['jobId'] . '&start=' . (isset($nextStart) ? $nextStart : $paginationSize) : '#');?>">Older &rarr;</a></li>
+        </ul>
+<?php
+        }
+    }
+?>
     </div>
-    <!-- /#wrapper -->
+    <!-- /#page-wrapper -->
+</div>
+<!-- /#wrapper -->
 </body>
 </html>

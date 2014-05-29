@@ -7,6 +7,10 @@
 <head>
     <title>Org Details - PS SfOpticon</title>
     <?php include_once(dirname(__FILE__) . '/head.html'); ?>
+    <script src="/plugins/validation/jqBootstrapValidation.js"></script>
+    <script type="text/javascript">
+        $(function () { $("input").not("[type=submit]").jqBootstrapValidation(); } );
+    </script>
 </head>
 <body>
     <div id="wrapper">
@@ -17,19 +21,88 @@
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
                 <strong>Mockup:</strong> This page is only minimally attached to actual data.
             </div>
+
+
+
+
             <?php
-                if (!isset($_GET['orgId'])) {
+                if (isset($_POST['action']) && $_POST['action'] == 'add') {
+                    $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+                    socket_set_block($socket);
+                    $communicationError = false;
+                    if ($socket === false) {
+                        $communicationError = true;
+                    } else {
+                        $result = socket_connect($socket, "localhost", 43442);
+                        if ($result === false) {
+                            $communicationError = true;
+                        } else {
+                            $out = '';
+                            while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                            if ($out !== "Ready!") {
+                                $communicationError = true;
+                            } else {
+                                // var_dump($_POST);
+                                $message = "create environment " .
+                                    "--name="     . $_POST['name']     . " " .
+                                    "--location=" . $_POST['location'] . " " .
+                                    "--username=" . $_POST['username'] . " " .
+                                    "--password=" . $_POST['password'] . " " .
+                                    "--token="    . $_POST['token'];
+                                if (isset($_POST['production'])) {
+                                    $message .= " --production=true";
+                                }
+                                $message .= "\r\n";
+                                socket_write($socket, $message, strlen($message));
+                                $out = '';
+                                while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                                if (strpos($out, 'SUCCESS') !== false) {
+                                    $resultComponents = explode(': ', $out);
+            ?>
+            <div class="alert alert-success">
+                <strong>Success:</strong> Job <a href="job.html?jobId=<?php echo $resultComponents[2]; ?>">#<?php echo $resultComponents[2]; ?></a> was started successfully.
+            </div>
+            <?php
+                                } else {
+            ?>
+            <div class="alert alert-danger">
+                <strong>Error:</strong> There was an error creating the job.
+            </div>
+            <?php
+                                }
+                            }
+                        }
+                    }
+                    if ($communicationError) {
+            ?>
+            <div class="alert alert-danger">
+                <strong>Error:</strong> Could not connect to SfOpticon service.
+            </div>
+            <?php
+                    }
+            ?>
+
+
+
+
+            <?php
+                } else if (!isset($_GET['orgId'])) {
             ?>
             <div class="alert alert-danger">
                 <strong>Error:</strong> No org specified.
             </div>
+
+
+
+
             <?php
                 } else if ($_GET['orgId'] == -1) {
             ?>
             <div class="alert alert-info">
                 Creating a new organization
             </div>
-            <div class="panel panel-info">
+            <form class="panel panel-info" method="POST">
+                <input type="hidden" name="action" value="add" />
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         New Org
@@ -37,31 +110,41 @@
                 </div>
                 <div class="list-group">
                     <div class="input-group">
-                        <span class="input-group-addon" style="min-width: 85px;">Name</span>
-                        <input type="text" class="form-control" placeholder="e.g. production">
+                        <span class="input-group-addon" style="min-width: 95px;"><input type="checkbox" name="production" value="true"></span>
+                        <div class="form-control">
+                            Production?
+                        </div>
                     </div>
                     <div class="input-group">
-                        <span class="input-group-addon" style="min-width: 85px;">Location</span>
-                        <input type="text" class="form-control" placeholder="e.g. login.petroskills.com">
+                        <span class="input-group-addon" style="min-width: 95px;">Name</span>
+                        <input type="text" name="name" class="form-control" placeholder="e.g. production" required />
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-addon" style="min-width: 95px;">Location</span>
+                        <input type="text" name="location" class="form-control" placeholder="e.g. login.petroskills.com" required />
                     </div>
                 </div>
                 <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;" data-toggle="collapse" data-parent="#accordion" href="#credentialsList">Credentials</button>
                 <div id="credentialsList" class="list-group panel-collapse">
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 95px;">Username</span>
-                        <input type="text" class="form-control" placeholder="e.g. your email">
+                        <input type="text" name="username" class="form-control" placeholder="e.g. your email" required />
                     </div>
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 95px;">Password</span>
-                        <input type="password" class="form-control" placeholder="">
+                        <input type="password" name="password" class="form-control" placeholder="" required />
                     </div>
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 95px;">Token</span>
-                        <input type="text" class="form-control" placeholder="Your security token">
+                        <input type="text" name="token" class="form-control" placeholder="Your security token" required />
                     </div>
                 </div>
-                <button id="saveButton" type="button" class="btn btn-success" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;">Save</button>
-            </div>
+                <input type="submit" id="saveButton" value="Save" class="btn btn-success" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;" />
+            </form>
+
+
+
+
             <?php
                 } else {
                     try {
