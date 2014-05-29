@@ -21,83 +21,69 @@
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
                 <strong>Mockup:</strong> This page is only minimally attached to actual data.
             </div>
-
-
-
-
-            <?php
-                if (isset($_POST['action']) && $_POST['action'] == 'add') {
-                    $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-                    socket_set_block($socket);
-                    $communicationError = false;
-                    if ($socket === false) {
-                        $communicationError = true;
-                    } else {
-                        $result = socket_connect($socket, "localhost", 43442);
-                        if ($result === false) {
-                            $communicationError = true;
-                        } else {
-                            $out = '';
-                            while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
-                            if ($out !== "Ready!") {
-                                $communicationError = true;
-                            } else {
-                                // var_dump($_POST);
-                                $message = "create environment " .
-                                    "--name="     . $_POST['name']     . " " .
-                                    "--location=" . $_POST['location'] . " " .
-                                    "--username=" . $_POST['username'] . " " .
-                                    "--password=" . $_POST['password'] . " " .
-                                    "--token="    . $_POST['token'];
-                                if (isset($_POST['production'])) {
-                                    $message .= " --production=true";
-                                }
-                                $message .= "\r\n";
-                                socket_write($socket, $message, strlen($message));
-                                $out = '';
-                                while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
-                                if (strpos($out, 'SUCCESS') !== false) {
-                                    $resultComponents = explode(': ', $out);
-            ?>
+<?php
+    if (isset($_POST['action']) && $_POST['action'] == 'add') {
+        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        socket_set_block($socket);
+        $communicationError = false;
+        if ($socket === false) {
+            $communicationError = true;
+        } else {
+            $result = socket_connect($socket, "localhost", 43442);
+            if ($result === false) {
+                $communicationError = true;
+            } else {
+                $out = '';
+                while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                if ($out !== "Ready!") {
+                    $communicationError = true;
+                } else {
+                    $message = "create environment " .
+                        "--name="     . $_POST['name']     . " " .
+                        "--location=" . $_POST['location'] . " " .
+                        "--username=" . $_POST['username'] . " " .
+                        "--password=" . $_POST['password'] . " " .
+                        "--token="    . $_POST['token'];
+                    if (isset($_POST['production'])) {
+                        $message .= " --production=true";
+                    }
+                    $message .= "\r\n";
+                    socket_write($socket, $message, strlen($message));
+                    $out = '';
+                    while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                    if (strpos($out, 'SUCCESS') !== false) {
+                        $resultComponents = explode(': ', $out);
+                        auditLog(null, 'Started create environment job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]);
+?>
             <div class="alert alert-success">
                 <strong>Success:</strong> Job <a href="job.html?jobId=<?php echo $resultComponents[2]; ?>">#<?php echo $resultComponents[2]; ?></a> was started successfully.
             </div>
-            <?php
-                                } else {
-            ?>
+<?php
+                    } else {
+?>
             <div class="alert alert-danger">
                 <strong>Error:</strong> There was an error creating the job.
             </div>
             <?php
-                                }
-                            }
-                        }
                     }
-                    if ($communicationError) {
-            ?>
+                }
+            }
+        }
+        if ($communicationError) {
+?>
             <div class="alert alert-danger">
                 <strong>Error:</strong> Could not connect to SfOpticon service.
             </div>
-            <?php
-                    }
-            ?>
-
-
-
-
-            <?php
-                } else if (!isset($_GET['orgId'])) {
-            ?>
+<?php
+        }
+    } else if (!isset($_GET['orgId'])) {
+?>
             <div class="alert alert-danger">
                 <strong>Error:</strong> No org specified.
             </div>
-
-
-
-
-            <?php
-                } else if ($_GET['orgId'] == -1) {
-            ?>
+<?php
+    } else if ($_GET['orgId'] == -1) {
+?>
             <div class="alert alert-info">
                 Creating a new organization
             </div>
@@ -141,35 +127,31 @@
                 </div>
                 <input type="submit" id="saveButton" value="Save" class="btn btn-success" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;" />
             </form>
-
-
-
-
-            <?php
-                } else {
-                    try {
-                        $db_con = connectDBi();
-                    } catch (Exception $e) {
-                        if ($e->getMessage() == "100") {
-                            $error = mysql_error();
-                            die("Error connecting to the database");
-                        } else if ($e->getMessage() == "101") {
-                            $error = mysql_error();
-                            die("Error selecting the database");
-                        }
-                    }
-                    // Guard against injection by enforcing that the orgId is a number
-                    settype($_GET['orgId'], "integer");
-                    $dbStr = "SELECT * FROM environment WHERE ID = " . $_GET['orgId'];
-                    $result = $db_con->query($dbStr);
-                    if ($result->num_rows == 0) {
-            ?>
+<?php
+    } else {
+        try {
+            $db_con = connectDBi();
+        } catch (Exception $e) {
+            if ($e->getMessage() == "100") {
+                $error = mysql_error();
+                die("Error connecting to the database");
+            } else if ($e->getMessage() == "101") {
+                $error = mysql_error();
+                die("Error selecting the database");
+            }
+        }
+        // Guard against injection by enforcing that the orgId is a number
+        settype($_GET['orgId'], "integer");
+        $dbStr = "SELECT * FROM environment WHERE ID = " . $_GET['orgId'];
+        $result = $db_con->query($dbStr);
+        if ($result->num_rows == 0) {
+?>
             <div class="alert alert-danger">
                 <strong>Error:</strong> No org found for specified ID.
             </div>
-            <?php
-                    } else {
-            ?>
+<?php
+        } else {
+?>
             <div class="panel panel-info">
                 <div class="panel-heading">
                     <h3 class="panel-title">
@@ -211,12 +193,10 @@
                     </div>
                 </div>
             </div>
-            <?php
-                    }
-            ?>
-            <?php
-                }
-            ?>
+<?php
+        }
+    }
+?>
             <script type="text/javascript">
                 var buttonPaneVisible = false;
                 function toggleButtonPane() {
