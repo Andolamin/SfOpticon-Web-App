@@ -86,14 +86,14 @@
                 </div>
             </div>
         </div>
-        <div class="panel panel-info">
+        <div class="panel <?php echo ($status == 1 ? 'panel-info' : ($status == 2 ? 'panel-danger' : 'panel-success')); ?>">
             <!-- Default panel contents -->
-            <div class="panel-heading">Process Log</div>
+            <div class="panel-heading">Job Log</div>
             <!-- Table -->
             <table class="table">
                 <colgroup>
-                    <col span="1" style="width: 20%;">
-                    <col span="1" style="width: 80%;">
+                    <col span="1" style="width: 30%;">
+                    <col span="1" style="width: 70%;">
                 </colgroup>
                 <tr>
                     <th>Time</th>

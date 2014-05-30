@@ -26,31 +26,31 @@ function CreateEnvironmentController() {
         },
         username: {
             required: true,
-            dependency: 'userSecurityToken',
+            dependency: 'userToken',
             type: 'string',
             description: 'The current user\'s username for this organization.'
         },
         password: {
             required: true,
-            dependency: 'userSecurityToken',
+            dependency: 'userToken',
             type: 'string',
             description: 'The current user\'s password for this organization.'
         },
         token: {
             required: true,
-            dependency: 'userSecurityToken',
+            dependency: 'userToken',
             type: 'string',
             description: 'The current user\'s security token for this organization.'
         },
         userAuthId: {
-            required: false,
+            required: true,
             type: 'string',
             description: 'The current user\'s production username.'
         },
-        userSecurityToken: {
-            required: false,
+        userToken: {
+            required: true,
             type: 'string',
-            description: 'The current user\'s production security token. Used for security storing organization credentials.'
+            description: 'The current user\'s production security token.'
         }
     };
 
@@ -89,19 +89,19 @@ function CreateEnvironmentController() {
             trigger: 'Host configured to',
             progress: 50,
             message: 'Metadata scanned',
-            always: true
+            always: false
         },
         {
             trigger: 'Retrieving',
             progress: 55,
             message: 'Fetching metadata',
-            always: true
+            always: false
         },
         {
             trigger: 'Pushing to',
             progress: 90,
             message: 'Storing metadata',
-            always: true
+            always: false
         },
         {
             trigger: 'Created',
@@ -217,6 +217,17 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
             if (this.lastProgress < this.createEnvironentProgressDef.length - 1) {
                 this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", 'Job Failed', NOW());");
                 this.connection.query("UPDATE `job` SET `progress` = 100.00, `status` = 'Failed: Job Failed' WHERE `ID` = " + this.jobId);
+            } else {
+                this.connection.query("INSERT INTO `environment` (`name`, `production`, `location`) VALUES ('" + this.params.get('name') + "', " + (this.params.has('production') ? '1' : '0') + ", '" + this.params.get('location') + "')",
+                function(err, result) {
+                    var environmentId = result.insertId;
+                    // Update environment credentials
+                    this.connection.query("UPDATE `environmentCredential` SET `email`='" + this.params.get('username') + "'," +
+                                          "`password`=AES_ENCRYPT('" + this.params.get('password') + "', '" + this.params.get('userToken') + "'), " +
+                                          "`token`=AES_ENCRYPT('" + this.params.get('token') + "', '" + this.params.get('userToken') + "') " +
+                                          "WHERE `environmentID` = " + environmentId + " AND " +
+                                          "`userID`=(SELECT `ID` FROM `user` WHERE `auth_id` = '" + this.params.get('userAuthId') + "' LIMIT 1)");
+                }.bind(this));
             }
         }.bind(this));
     }

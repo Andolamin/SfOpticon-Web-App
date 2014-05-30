@@ -24,9 +24,24 @@
         <?php include_once(dirname(__FILE__) . '/header.html'); ?>
 
         <div id="page-wrapper">
-            <div class="alert alert-success alert-dismissable">
+            <div class="alert alert-info alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Good to go!</strong> This page is fully attached to actual data.
+                <strong>Good to go!</strong> This page is fully attached to actual data. Filter functionality is WIP.
+            </div>
+            <div class="input-group" style="margin-bottom: 20px; width: 100%;">
+                <input type="text" class="form-control" disabled value="Filter only: ">
+                <div class="input-group-btn" style="width: 80%">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="width: 100%">
+                        Filter <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" style="width: 100%;">
+                        <li><a href="#">In-progress</a></li>
+                        <li><a href="#">Complete</a></li>
+                        <li><a href="#">Failed</a></li>
+                        <li class="divider"></li>
+                        <li><a href="#">All</a></li>
+                    </ul>
+                </div><!-- /btn-group -->
             </div>
 <?php
     try {

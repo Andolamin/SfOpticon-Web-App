@@ -39,11 +39,13 @@
                     $communicationError = true;
                 } else {
                     $message = "create environment " .
-                        "--name="     . $_POST['name']     . " " .
-                        "--location=" . $_POST['location'] . " " .
-                        "--username=" . $_POST['username'] . " " .
-                        "--password=" . $_POST['password'] . " " .
-                        "--token="    . $_POST['token'];
+                        "--name="       . $_POST['name']          . " " .
+                        "--location="   . $_POST['location']      . " " .
+                        "--username="   . $_POST['username']      . " " .
+                        "--password="   . $_POST['password']      . " " .
+                        "--token="      . $_POST['token']         . " " .
+                        "--userAuthId=" . $_SESSION['sfUsername'] . " " .
+                        "--userToken="  . $_SESSION['sfToken']    . " ";
                     if (isset($_POST['production'])) {
                         $message .= " --production=true";
                     }
