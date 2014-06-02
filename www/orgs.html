@@ -75,11 +75,8 @@
                     }
                 }
 
-                $dbStr = ("SELECT `env`.`ID`, `env`.`name`, `env`.`production`, `env`.`location`, `env`.`locked`, " .
-						"`credentials`.`email`, AES_DECRYPT(`credentials`.`password`, '" . $_SESSION['sfToken'] . "') as `password`, AES_DECRYPT(`credentials`.`token`, '" . $_SESSION['sfToken'] . "') as `token` " .
-						"FROM `environment` as `env` JOIN (SELECT `environmentID`, `email`, `password`, `token` " .
-						"FROM `environmentCredential` WHERE `userID` = (SELECT `ID` FROM `user` " .
-						"WHERE `auth_id` = '" . $_SESSION['sfUsername'] . "' LIMIT 1)) as `credentials` ON `env`.`ID` = `credentials`.`environmentID`");
+                $dbStr = ("SELECT `env`.`ID`, `env`.`name`, `env`.`production`, `env`.`location`, `env`.`locked` " .
+						"FROM `environment` as `env`");
                 $result = $db_con->query($dbStr);
                 $numRows = $result->num_rows;
                 $count = 1;
@@ -94,27 +91,6 @@
                 <div class="panel-body">
                     <?php echo $row['location']; ?>
                 </div>
-                <div class="panel-footer" id="accordion">
-                    <a data-toggle="collapse" href="#collapse<?php echo $count; ?>">
-                        <div style="width: 100%; height:100%;">
-                            Credentials
-                        </div>
-                    </a>
-                </div>
-                <form id="collapse<?php echo $count; ?>" class="list-group collapse" method="post">
-                    <input type="hidden" name="environment" value="<?php echo $row['ID']; ?>">
-                    <input type="text" name="email" class="form-control" placeholder="Username" value="<?php echo $row['email']; ?>">
-                    <input type="password" name="password" class="form-control" placeholder="Password" value="<?php echo $row['password']; ?>">
-                    <input type="text" name="token" class="form-control" placeholder="Security Token" value="<?php echo $row['token']; ?>">
-                    <div class="btn-group btn-group-justified">
-                        <div class="btn-group">
-                            <input type="submit" value="Save" class="btn btn-success"></button>
-                        </div>
-                        <a class="btn btn-warning" data-toggle="collapse" href="#collapse1">
-                            Cancel
-                        </a>
-                    </div>
-                </form>
             </div>
             <?php
                     $count++;

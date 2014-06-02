@@ -17,9 +17,9 @@
         <?php include_once(dirname(__FILE__) . '/header.html'); ?>
 
         <div id="page-wrapper">
-            <div class="alert alert-warning alert-dismissable">
+            <div class="alert alert-info alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Mockup:</strong> This page is only minimally attached to actual data.
+                <strong>WIP:</strong> This page is fully attached to data. Editing org details is WIP.
             </div>
 <?php
     if (isset($_POST['action']) && $_POST['action'] == 'add') {
@@ -144,7 +144,12 @@
         }
         // Guard against injection by enforcing that the orgId is a number
         settype($_GET['orgId'], "integer");
-        $dbStr = "SELECT * FROM environment WHERE ID = " . $_GET['orgId'];
+        $dbStr = ("SELECT `env`.`ID`, `env`.`name`, `env`.`production`, `env`.`location`, `env`.`locked`, " .
+                "`credentials`.`email`, AES_DECRYPT(`credentials`.`password`, '" . $_SESSION['sfToken'] . "') as `password`, AES_DECRYPT(`credentials`.`token`, '" . $_SESSION['sfToken'] . "') as `token` " .
+                "FROM `environment` as `env` JOIN (SELECT `environmentID`, `email`, `password`, `token` " .
+                "FROM `environmentCredential` WHERE `userID` = (SELECT `ID` FROM `user` " .
+                "WHERE `auth_id` = '" . $_SESSION['sfUsername'] . "' LIMIT 1)) as `credentials` ON `env`.`ID` = `credentials`.`environmentID` WHERE `env`.`ID` = " . $_GET['orgId']);
+        // $dbStr = "SELECT * FROM environment WHERE ID = " . $_GET['orgId'];
         $result = $db_con->query($dbStr);
         if ($result->num_rows == 0) {
 ?>
@@ -153,6 +158,7 @@
             </div>
 <?php
         } else {
+            $row = $result->fetch_assoc();
 ?>
             <div class="panel panel-info">
                 <div class="panel-heading">
@@ -163,26 +169,26 @@
                 <div class="list-group">
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 85px;">Name</span>
-                        <input type="text" class="form-control" placeholder="e.g. production" readonly>
+                        <input type="text" class="form-control" placeholder="e.g. production" readonly value="<?php echo $row['name']; ?>">
                     </div>
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 85px;">Location</span>
-                        <input type="text" class="form-control" placeholder="e.g. login.petroskills.com" readonly>
+                        <input type="text" class="form-control" placeholder="e.g. login.petroskills.com" readonly value="<?php echo $row['location']; ?>">
                     </div>
                 </div>
                 <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;" data-toggle="collapse" data-parent="#accordion" href="#credentialsList">Credentials</button>
                 <div id="credentialsList" class="list-group panel-collapse collapse">
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 95px;">Username</span>
-                        <input type="text" class="form-control" placeholder="e.g. your email" readonly>
+                        <input type="text" class="form-control" placeholder="e.g. your email" readonly value="<?php echo $row['email']; ?>">
                     </div>
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 95px;">Password</span>
-                        <input type="password" class="form-control" placeholder="" readonly>
+                        <input type="password" class="form-control" placeholder="" readonly value="<?php echo $row['password']; ?>">
                     </div>
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 95px;">Token</span>
-                        <input type="text" class="form-control" placeholder="Your security token" readonly>
+                        <input type="text" class="form-control" placeholder="Your security token" readonly value="<?php echo $row['token']; ?>">
                     </div>
                 </div>
                 <button id="editButton" type="button" class="btn btn-info" onclick="toggleButtonPane()" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;">Edit</button>

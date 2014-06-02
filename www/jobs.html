@@ -26,8 +26,25 @@
         <div id="page-wrapper">
             <div class="alert alert-info alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Good to go!</strong> This page is fully attached to actual data. Filter functionality is WIP.
+                <strong>Good to go!</strong> This page is fully attached to actual data.
             </div>
+            <script type="text/javascript">
+                function filterInProgress() {
+                    window.location.assign(window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=1&start=0');
+                }
+
+                function filterComplete() {
+                    window.location.assign(window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=2&start=0');
+                }
+
+                function filterFailed() {
+                    window.location.assign(window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=3&start=0');
+                }
+
+                function filterAll() {
+                    window.location.assign(window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=0&start=0');
+                }
+            </script>
             <div class="input-group" style="margin-bottom: 20px; width: 100%;">
                 <input type="text" class="form-control" disabled value="Filter only: ">
                 <div class="input-group-btn" style="width: 80%">
@@ -35,11 +52,11 @@
                         Filter <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" style="width: 100%;">
-                        <li><a href="#">In-progress</a></li>
-                        <li><a href="#">Complete</a></li>
-                        <li><a href="#">Failed</a></li>
+                        <li><a href="#" onclick="filterInProgress()">In-progress</a></li>
+                        <li><a href="#" onclick="filterComplete()">Complete</a></li>
+                        <li><a href="#" onclick="filterFailed()">Failed</a></li>
                         <li class="divider"></li>
-                        <li><a href="#">All</a></li>
+                        <li><a href="#" onclick="filterAll()">All</a></li>
                     </ul>
                 </div><!-- /btn-group -->
             </div>
@@ -58,7 +75,21 @@
     if (!isset($_GET['start'])) {
         $_GET['start'] = 0;
     }
-    $dbStr = "SELECT * FROM `job` WHERE 1 ORDER BY id DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
+    $filterString = '1';
+    if (isset($_GET['filter'])) {
+        switch($_GET['filter']) {
+            case 1: // In-progress
+                $filterString = "`progress` < 100";
+                break;
+            case 2: // Complete
+                $filterString = "`status` = 'Complete'";
+                break;
+            case 3: // Failed
+                $filterString = "`status` != 'Complete' AND `progress` = 100";
+                break;
+        }
+    }
+    $dbStr = "SELECT * FROM `job` WHERE " . $filterString . " ORDER BY id DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
     $result = $db_con->query($dbStr);
     $numRows = $result->num_rows;
     $count = 0;
