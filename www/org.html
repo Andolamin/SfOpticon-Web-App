@@ -130,6 +130,14 @@
                 <input type="submit" id="saveButton" value="Save" class="btn btn-success" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;" />
             </form>
 <?php
+    } else if (isset($_POST['action']) && $_POST['action'] == 'update') {
+?>
+            <div class="alert alert-danger">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                <strong>Error!</strong> Editing details is not functional.
+            </div>
+<?php
+        // var_dump($_POST);
     } else {
         try {
             $db_con = connectDBi();
@@ -160,56 +168,69 @@
         } else {
             $row = $result->fetch_assoc();
 ?>
-            <div class="panel panel-info">
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        Org Details
-                    </h3>
+            <form method="post">
+                <input type="hidden" name="action" value="update" />
+                <input type="hidden" name="org" value="<?php echo $_GET['orgId']; ?>" />
+                <div class="panel panel-info">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            Org Details
+                        </h3>
+                    </div>
+                    <div class="list-group">
+                        <div class="input-group">
+                            <span class="input-group-addon" style="min-width: 85px;">Name</span>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. production" readonly value="<?php echo $row['name']; ?>" data-original-value="<?php echo $row['name']; ?>">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-addon" style="min-width: 85px;">Location</span>
+                            <input type="text" name="location" class="form-control" placeholder="e.g. login.petroskills.com" readonly value="<?php echo $row['location']; ?>" data-original-value="<?php echo $row['location']; ?>">
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;" data-toggle="collapse" data-parent="#accordion" href="#credentialsList">Credentials</button>
+                    <div id="credentialsList" class="list-group panel-collapse collapse">
+                        <div class="input-group">
+                            <span class="input-group-addon" style="min-width: 95px;">Username</span>
+                            <input type="text" name="username" class="form-control" placeholder="e.g. your email" readonly value="<?php echo $row['email']; ?>" data-original-value="<?php echo $row['email']; ?>">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-addon" style="min-width: 95px;">Password</span>
+                            <input type="password" name="password" class="form-control" placeholder="" readonly value="<?php echo $row['password']; ?>" data-original-value="<?php echo $row['password']; ?>">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-addon" style="min-width: 95px;">Token</span>
+                            <input type="text" name="token" class="form-control" placeholder="Your security token" readonly value="<?php echo $row['token']; ?>" data-original-value="<?php echo $row['token']; ?>">
+                        </div>
+                    </div>
+                    <button id="editButton" type="button" class="btn btn-info" onclick="toggleButtonPane()" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;">Edit</button>
+                    <div id="editPane" class="btn-group btn-group-justified" style="display: none;">
+                        <div class="btn-group">
+                            <input type="submit" value="Save" class="btn btn-success" style="border-top-left-radius: 0;" />
+                        </div>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-danger" onclick="toggleButtonPane()" style="border-top-right-radius: 0;">Cancel</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="list-group">
-                    <div class="input-group">
-                        <span class="input-group-addon" style="min-width: 85px;">Name</span>
-                        <input type="text" class="form-control" placeholder="e.g. production" readonly value="<?php echo $row['name']; ?>">
-                    </div>
-                    <div class="input-group">
-                        <span class="input-group-addon" style="min-width: 85px;">Location</span>
-                        <input type="text" class="form-control" placeholder="e.g. login.petroskills.com" readonly value="<?php echo $row['location']; ?>">
-                    </div>
-                </div>
-                <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;" data-toggle="collapse" data-parent="#accordion" href="#credentialsList">Credentials</button>
-                <div id="credentialsList" class="list-group panel-collapse collapse">
-                    <div class="input-group">
-                        <span class="input-group-addon" style="min-width: 95px;">Username</span>
-                        <input type="text" class="form-control" placeholder="e.g. your email" readonly value="<?php echo $row['email']; ?>">
-                    </div>
-                    <div class="input-group">
-                        <span class="input-group-addon" style="min-width: 95px;">Password</span>
-                        <input type="password" class="form-control" placeholder="" readonly value="<?php echo $row['password']; ?>">
-                    </div>
-                    <div class="input-group">
-                        <span class="input-group-addon" style="min-width: 95px;">Token</span>
-                        <input type="text" class="form-control" placeholder="Your security token" readonly value="<?php echo $row['token']; ?>">
-                    </div>
-                </div>
-                <button id="editButton" type="button" class="btn btn-info" onclick="toggleButtonPane()" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;">Edit</button>
-                <div id="editPane" class="btn-group btn-group-justified" style="display: none;">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-success" style="border-top-left-radius: 0;">Save</button>
-                    </div>
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-danger" onclick="toggleButtonPane()" style="border-top-right-radius: 0;">Cancel</button>
-                    </div>
-                </div>
-            </div>
+            </form>
 <?php
         }
     }
 ?>
             <script type="text/javascript">
                 var buttonPaneVisible = false;
+                var editable = false;
                 function toggleButtonPane() {
                     $('#editButton').css('display', (buttonPaneVisible ? 'block' : 'none'));
                     $('#editPane').css('display', (buttonPaneVisible ? 'none' : 'block'));
+                    $('input').attr('readonly', editable);
+                    if (editable) {
+                        // Revert back to the original values
+                        $('input').each(function(){
+                            $(this)[0].value = $(this).data('originalValue');
+                        });
+                    }
+                    editable = !editable;
                     buttonPaneVisible = !buttonPaneVisible;
                 }
             </script>
