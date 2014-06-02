@@ -184,7 +184,7 @@
                         </div>
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 85px;">Location</span>
-                            <input type="text" name="location" class="form-control" placeholder="e.g. login.petroskills.com" readonly value="<?php echo $row['location']; ?>" data-original-value="<?php echo $row['location']; ?>">
+                            <input type="text" name="location" class="form-control" placeholder="e.g. login.petroskills.com" readonly disabled value="<?php echo $row['location']; ?>" data-original-value="<?php echo $row['location']; ?>" data-locked>
                         </div>
                     </div>
                     <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;" data-toggle="collapse" data-parent="#accordion" href="#credentialsList">Credentials</button>
@@ -223,10 +223,10 @@
                 function toggleButtonPane() {
                     $('#editButton').css('display', (buttonPaneVisible ? 'block' : 'none'));
                     $('#editPane').css('display', (buttonPaneVisible ? 'none' : 'block'));
-                    $('input').attr('readonly', editable);
+                    $('input:not([data-locked]):not([type="hidden"])').attr('readonly', editable);
                     if (editable) {
                         // Revert back to the original values
-                        $('input').each(function(){
+                        $('input:not([data-locked]):not([type="hidden"])').each(function(){
                             $(this)[0].value = $(this).data('originalValue');
                         });
                     }
