@@ -12,6 +12,18 @@
             $previousStart = 0;
         }
     }
+
+    try {
+        $db_con = connectDBi();
+    } catch (Exception $e) {
+        if ($e->getMessage() == "100") {
+            $error = mysql_error();
+            die("Error connecting to the database");
+        } else if ($e->getMessage() == "101") {
+            $error = mysql_error();
+            die("Error selecting the database");
+        }
+    }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -24,32 +36,76 @@
         <?php include_once(dirname(__FILE__) . '/header.html'); ?>
 
         <div id="page-wrapper">
-            <div class="alert alert-info alert-dismissable">
+            <div class="alert alert-success alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
                 <strong>Good to go!</strong> This page is fully attached to actual data.
             </div>
             <script type="text/javascript">
                 function filterInProgress() {
-                    window.location.assign(window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=1&start=0');
+                    var newLocation = window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=1&start=0';
+                    if (typeof getQueryVariable('org') != 'undefined') {
+                        newLocation += '&org=' + getQueryVariable('org');
+                    }
+                    window.location.assign(newLocation);
                 }
 
                 function filterComplete() {
-                    window.location.assign(window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=2&start=0');
+                    var newLocation = window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=2&start=0';
+                    if (typeof getQueryVariable('org') != 'undefined') {
+                        newLocation += '&org=' + getQueryVariable('org');
+                    }
+                    window.location.assign(newLocation);
                 }
 
                 function filterFailed() {
-                    window.location.assign(window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=3&start=0');
+                    var newLocation = window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=3&start=0';
+                    if (typeof getQueryVariable('org') != 'undefined') {
+                        newLocation += '&org=' + getQueryVariable('org');
+                    }
+                    window.location.assign(newLocation);
                 }
 
                 function filterAll() {
-                    window.location.assign(window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=0&start=0');
+                    var newLocation = window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=0&start=0';
+                    if (typeof getQueryVariable('org') != 'undefined') {
+                        newLocation += '&org=' + getQueryVariable('org');
+                    }
+                    window.location.assign(newLocation);
+                }
+
+                function filterEnvironment(inEnvironmentId) {
+                    var newLocation = window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?org=' + inEnvironmentId + '&start=0';
+                    if (typeof getQueryVariable('filter') != 'undefined') {
+                        newLocation += '&filter=' + getQueryVariable('filter');
+                    }
+                    window.location.assign(newLocation);
+                }
+
+                function filterAllEnvironments() {
+                    var newLocation = window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?start=0';
+                    if (typeof getQueryVariable('filter') != 'undefined') {
+                        newLocation += '&filter=' + getQueryVariable('filter');
+                    }
+                    window.location.assign(newLocation);
+                }
+
+                function getQueryVariable(variable) {
+                    var query = window.location.search.substring(1);
+                    var vars = query.split('&');
+                    for (var i = 0; i < vars.length; i++) {
+                        var pair = vars[i].split('=');
+                        if (decodeURIComponent(pair[0]) == variable) {
+                            return decodeURIComponent(pair[1]);
+                        }
+                    }
+                    console.log('Query variable %s not found', variable);
                 }
             </script>
             <div class="input-group" style="margin-bottom: 20px; width: 100%;">
                 <input type="text" class="form-control" disabled value="Filter only: ">
-                <div class="input-group-btn" style="width: 80%">
+                <div class="input-group-btn" style="width: 50%">
                     <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="width: 100%">
-                        Filter <span class="caret"></span>
+                        Status <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" style="width: 100%;">
                         <li><a href="#" onclick="filterInProgress()">In-progress</a></li>
@@ -58,20 +114,27 @@
                         <li class="divider"></li>
                         <li><a href="#" onclick="filterAll()">All</a></li>
                     </ul>
+                </div>
+                <div class="input-group-btn" style="width: 30%">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="width: 100%">
+                        Environment <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" style="width: 100%;">
+<?php
+    $dbStr = "SELECT `ID`, `name` FROM `environment`";
+    $result = $db_con->query($dbStr);
+    while ($row = $result->fetch_assoc()) {
+?>
+                        <li><a href="#" onclick="filterEnvironment(<?php echo $row['ID']; ?>)"><?php echo $row['name']; ?></a></li>
+<?php
+    }
+?>
+                        <li class="divider"></li>
+                        <li><a href="#" onclick="filterAllEnvironments()">All</a></li>
+                    </ul>
                 </div><!-- /btn-group -->
             </div>
 <?php
-    try {
-        $db_con = connectDBi();
-    } catch (Exception $e) {
-        if ($e->getMessage() == "100") {
-            $error = mysql_error();
-            die("Error connecting to the database");
-        } else if ($e->getMessage() == "101") {
-            $error = mysql_error();
-            die("Error selecting the database");
-        }
-    }
     if (!isset($_GET['start'])) {
         $_GET['start'] = 0;
     }
@@ -88,6 +151,9 @@
                 $filterString = "`status` != 'Complete' AND `progress` = 100";
                 break;
         }
+    }
+    if (isset($_GET['org']) && $_GET['org'] != 0) {
+        $filterString .= ' AND `environmentID` = ' . $_GET['org'];
     }
     $dbStr = "SELECT * FROM `job` WHERE " . $filterString . " ORDER BY id DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
     $result = $db_con->query($dbStr);
