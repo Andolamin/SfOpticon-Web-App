@@ -221,6 +221,7 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
                 this.connection.query("INSERT INTO `environment` (`name`, `production`, `location`) VALUES ('" + this.params.get('name') + "', " + (this.params.has('production') ? '1' : '0') + ", '" + this.params.get('location') + "')",
                 function(err, result) {
                     var environmentId = result.insertId;
+                    this.connection.query("UPDATE `job` SET `environmentID` = " + environmentId + " WHERE `ID` = " + this.jobId);
                     // Update environment credentials
                     this.connection.query("UPDATE `environmentCredential` SET `email`='" + this.params.get('username') + "'," +
                                           "`password`=AES_ENCRYPT('" + this.params.get('password') + "', '" + this.params.get('userToken') + "'), " +
