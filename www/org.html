@@ -46,7 +46,7 @@
                         "--token="      . $_POST['token']         . " " .
                         "--userAuthId=" . $_SESSION['sfUsername'] . " " .
                         "--userToken="  . $_SESSION['sfToken']    . " ";
-                    if (isset($_POST['production'])) {
+                    if (isset($_POST['production']) && $_POST['production'] == 'true') {
                         $message .= " --production=true";
                     }
                     $message .= "\r\n";
@@ -85,12 +85,26 @@
             </div>
 <?php
     } else if ($_GET['orgId'] == -1) {
+        try {
+            $db_con = connectDBi();
+        } catch (Exception $e) {
+            if ($e->getMessage() == "100") {
+                $error = mysql_error();
+                die("Error connecting to the database");
+            } else if ($e->getMessage() == "101") {
+                $error = mysql_error();
+                die("Error selecting the database");
+            }
+        }
+        $dbStr = "SELECT `ID` FROM `Environment`";
+        $result = $db_con->query($dbStr);
 ?>
             <div class="alert alert-info">
                 Creating a new organization
             </div>
             <form class="panel panel-info" method="POST">
                 <input type="hidden" name="action" value="add" />
+                <input type="hidden" name="production" value="<?php  echo ($result->num_rows == 0 ? 'true' : 'false' ) ?>" />
                 <div class="panel-heading">
                     <h3 class="panel-title">
                         New Org
@@ -98,7 +112,7 @@
                 </div>
                 <div class="list-group">
                     <div class="input-group">
-                        <span class="input-group-addon" style="min-width: 95px;"><input type="checkbox" name="production" value="true"></span>
+                        <span class="input-group-addon" style="min-width: 95px;"><input type="checkbox" disabled <?php if ($result->num_rows == 0) { echo 'checked'; } ?>></span>
                         <div class="form-control">
                             Production?
                         </div>
@@ -150,13 +164,24 @@
                 die("Error selecting the database");
             }
         }
+        try {
+            $sfopticon_db_con = connectDBi('sfopticon');
+        } catch (Exception $e) {
+            if ($e->getMessage() == "100") {
+                $error = mysql_error();
+                die("Error connecting to the database");
+            } else if ($e->getMessage() == "101") {
+                $error = mysql_error();
+                die("Error selecting the database");
+            }
+        }
         // Guard against injection by enforcing that the orgId is a number
         settype($_GET['orgId'], "integer");
-        $dbStr = ("SELECT `env`.`ID`, `env`.`name`, `env`.`production`, `env`.`location`, `env`.`locked`, " .
-                "`credentials`.`email`, AES_DECRYPT(`credentials`.`password`, '" . $_SESSION['sfToken'] . "') as `password`, AES_DECRYPT(`credentials`.`token`, '" . $_SESSION['sfToken'] . "') as `token` " .
-                "FROM `environment` as `env` JOIN (SELECT `environmentID`, `email`, `password`, `token` " .
-                "FROM `environmentCredential` WHERE `userID` = (SELECT `ID` FROM `user` " .
-                "WHERE `auth_id` = '" . $_SESSION['sfUsername'] . "' LIMIT 1)) as `credentials` ON `env`.`ID` = `credentials`.`environmentID` WHERE `env`.`ID` = " . $_GET['orgId']);
+        $dbStr = ("SELECT `env`.`ID`, `env`.`Name`, `env`.`Production`, `env`.`Location`, " .
+                "`credentials`.`Username`, AES_DECRYPT(`credentials`.`Password`, '" . $_SESSION['sfToken'] . "') as `Password`, AES_DECRYPT(`credentials`.`Token`, '" . $_SESSION['sfToken'] . "') as `Token` " .
+                "FROM `Environment` as `env` JOIN (SELECT `EnvironmentID`, `Username`, `Password`, `Token` " .
+                "FROM `EnvironmentCredential` WHERE `UserID` = (SELECT `ID` FROM `User` " .
+                "WHERE `Username` = '" . $_SESSION['sfUsername'] . "' LIMIT 1)) as `credentials` ON `env`.`ID` = `credentials`.`EnvironmentID` WHERE `env`.`ID` = " . $_GET['orgId']);
         // $dbStr = "SELECT * FROM environment WHERE ID = " . $_GET['orgId'];
         $result = $db_con->query($dbStr);
         if ($result->num_rows == 0) {
@@ -180,32 +205,32 @@
                     <div class="list-group">
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 85px;">Name</span>
-                            <input type="text" name="name" class="form-control" placeholder="e.g. production" readonly value="<?php echo $row['name']; ?>" data-original-value="<?php echo $row['name']; ?>">
+                            <input type="text" name="name" class="form-control" placeholder="e.g. production" readonly value="<?php echo $row['Name']; ?>" data-original-value="<?php echo $row['Name']; ?>">
                         </div>
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 85px;">Location</span>
-                            <input type="text" name="location" class="form-control" placeholder="e.g. login.petroskills.com" readonly disabled value="<?php echo $row['location']; ?>" data-original-value="<?php echo $row['location']; ?>" data-locked>
+                            <input type="text" name="location" class="form-control" placeholder="e.g. login.petroskills.com" readonly disabled value="<?php echo $row['Location']; ?>" data-locked>
                         </div>
                     </div>
                     <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;" data-toggle="collapse" data-parent="#accordion" href="#credentialsList">Credentials</button>
                     <div id="credentialsList" class="list-group panel-collapse collapse">
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 95px;">Username</span>
-                            <input type="text" name="username" class="form-control" placeholder="e.g. your email" readonly value="<?php echo $row['email']; ?>" data-original-value="<?php echo $row['email']; ?>">
+                            <input type="text" name="username" class="form-control" placeholder="e.g. your email" readonly value="<?php echo $row['Username']; ?>" data-original-value="<?php echo $row['Username']; ?>">
                         </div>
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 95px;">Password</span>
-                            <input type="password" name="password" class="form-control" placeholder="" readonly value="<?php echo $row['password']; ?>" data-original-value="<?php echo $row['password']; ?>">
+                            <input type="password" name="password" class="form-control" placeholder="" readonly value="<?php echo $row['Password']; ?>" data-original-value="<?php echo $row['Password']; ?>">
                         </div>
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 95px;">Token</span>
-                            <input type="text" name="token" class="form-control" placeholder="Your security token" readonly value="<?php echo $row['token']; ?>" data-original-value="<?php echo $row['token']; ?>">
+                            <input type="text" name="token" class="form-control" placeholder="Your security token" readonly value="<?php echo $row['Token']; ?>" data-original-value="<?php echo $row['Token']; ?>">
                         </div>
                     </div>
                     <button id="editButton" type="button" class="btn btn-info" onclick="toggleButtonPane()" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;">Edit</button>
                     <div id="editPane" class="btn-group btn-group-justified" style="display: none;">
                         <div class="btn-group">
-                            <input type="submit" value="Save" class="btn btn-success" style="border-top-left-radius: 0;" />
+                            <input type="submit" value="Save" data-locked class="btn btn-success" style="border-top-left-radius: 0;" />
                         </div>
                         <div class="btn-group">
                             <button type="button" class="btn btn-danger" onclick="toggleButtonPane()" style="border-top-right-radius: 0;">Cancel</button>

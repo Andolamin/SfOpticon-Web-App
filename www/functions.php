@@ -22,7 +22,7 @@
             }
         }
         $user = ($user ? $user : ($userInfo ? $userInfo->userName : "Unknown"));
-        $dbStr = "INSERT INTO audit_log (username, action) values ('" . $user . "', '" . $action . "')";
+        $dbStr = "INSERT INTO `AuditLog` (`Username`, `Action`, `UserID`) values ('" . $user . "', '" . $action . "', (SELECT `ID` FROM `User` WHERE `Username` = '" . $user . "'))";
         // echo $dbStr;
         $result = $db_con->query($dbStr);
         if ($result !== true) {
@@ -60,14 +60,14 @@
 	};
 	
 	// Connect to the mysql database using new mysqli extension
-	function connectDBi() {
+	function connectDBi($rootOverride = null) {
 		$server = getServer();
 	
 		global $servers;
 		
 		// Definitions
 		$database_host = $servers[$server]["db_host"];
-		$database_root = $servers[$server]["db_root"];
+		$database_root = (isset($rootOverride) ? $rootOverride : $servers[$server]["db_root"]);
 		$database_user = $servers[$server]["db_user"];
 		$database_pass = $servers[$server]["db_pass"];
 		

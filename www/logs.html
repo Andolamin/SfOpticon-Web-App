@@ -60,7 +60,7 @@
                         if (!isset($_GET['start'])) {
                             $_GET['start'] = 0;
                         }
-						$dbStr = "SELECT * FROM audit_log WHERE 1 ORDER BY id DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
+						$dbStr = "SELECT `ID`, `Username`, `Action`, `Time` FROM `AuditLog` WHERE 1 ORDER BY `ID` DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
                         $result = $db_con->query($dbStr);
                         $numRows = $result->num_rows;
                         $count = 0;
@@ -68,10 +68,10 @@
                             if ($count < $paginationSize) {
                     ?>
                     <tr>
-                        <td><?php echo $row['id']; ?></td>
-                        <td><?php echo $row['username']; ?></td>
-                        <td><?php echo $row['action']; ?></td>
-                        <td><?php echo $row['time']; ?></td>
+                        <td><?php echo $row['ID']; ?></td>
+                        <td><?php echo $row['Username']; ?></td>
+                        <td><?php echo $row['Action']; ?></td>
+                        <td><?php echo $row['Time']; ?></td>
                     </tr>
                     <?php
                             }

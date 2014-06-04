@@ -121,7 +121,7 @@ function CreateEnvironmentController() {
 CreateEnvironmentController.prototype.handleCommand = function handleCommand(socket, args) {
     this.socket = socket;
     this.params = require('../libs/parameterHelper.js').parametersFromArguments(args.slice(2));
-    console.log('(' + this.socket.key + '): Creating environment from command: ' + this.args);
+    console.log('(' + this.socket.key + '): Creating environment from command: ' + this.params);
 
     // Create job record in DB
     var settings = require('../settings.js');
@@ -132,7 +132,7 @@ CreateEnvironmentController.prototype.handleCommand = function handleCommand(soc
     });
     this.connection.connect();
     this.connection.query('USE ' + settings.mysqlDB);
-    this.connection.query("INSERT INTO `job` (`status`, `progress`, `start`, `type`) VALUES ('Received', '0.00', NOW(), 'Create Environment');",
+    this.connection.query("INSERT INTO `Job` (`Status`, `Progress`, `StartTime`, `Type`) VALUES ('Received', '0.00', NOW(), 'Create Environment');",
         function (err, result) {
             if (err) {
                 console.log('(' + this.socket.key + '): MySQL error: ' + err.message);
@@ -151,7 +151,7 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
 //    this.socket.write('Job ID: ' + this.jobId + '\r\n');
 //    this.socket.destroy();
     console.log('(' + this.socket.key + '): Job ID: ' + this.jobId);
-    this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", 'Received', NOW())",
+    this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Received', NOW())",
         function(err) {
             if (err) {
                 console.log('(' + this.socket.key + '): Error inserting log');
@@ -172,8 +172,8 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
 //        this.socket.destroy();
 
         // Update job record with error
-        this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", 'Invalid Parameters', NOW());");
-        this.connection.query("UPDATE `job` SET `progress` = 100, `status` = 'Failed: Invalid Parameters' WHERE `ID` = " + this.jobId);
+        this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Invalid Parameters', NOW());");
+        this.connection.query("UPDATE `Job` SET `Progress` = 100, `Status` = 'Failed: Invalid Parameters' WHERE `ID` = " + this.jobId);
         this.connection.end();
     } else {
         this.socket.write('SUCCESS: Job received successfully: ' + this.jobId + '\n');
@@ -199,6 +199,12 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
             sfArgs.push('--production');
         }
 
+        var commandString = 'ruby';
+        for (var i = 0; i < sfArgs.length; i++) {
+            commandString += ' ' + sfArgs[i];
+        }
+        console.log(commandString);
+
         var child = spawn('ruby',
             sfArgs,
             {
@@ -215,19 +221,20 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
 
         child.on('exit', function() {
             if (this.lastProgress < this.createEnvironentProgressDef.length - 1) {
-                this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", 'Job Failed', NOW());");
-                this.connection.query("UPDATE `job` SET `progress` = 100.00, `status` = 'Failed: Job Failed' WHERE `ID` = " + this.jobId);
+                this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Job Failed', NOW());");
+                this.connection.query("UPDATE `Job` SET `Progress` = 100.00, `Status` = 'Failed: Job Failed' WHERE `ID` = " + this.jobId);
             } else {
-                this.connection.query("INSERT INTO `environment` (`name`, `production`, `location`) VALUES ('" + this.params.get('name') + "', " + (this.params.has('production') ? '1' : '0') + ", '" + this.params.get('location') + "')",
+                this.connection.query("INSERT INTO `Environment` (`Name`, `Production`, `Location`) VALUES ('" + this.params.get('name') + "', " + (this.params.has('production') ? '1' : '0') + ", '" + this.params.get('location') + "')",
                 function(err, result) {
+                    console.log(err);
                     var environmentId = result.insertId;
-                    this.connection.query("UPDATE `job` SET `environmentID` = " + environmentId + " WHERE `ID` = " + this.jobId);
+                    this.connection.query("INSERT INTO `EnvironmentJob` (`EnvironmentID`, `JobID`) VALUES (" + environmentId + ", " + this.jobId + ")")
                     // Update environment credentials
-                    this.connection.query("UPDATE `environmentCredential` SET `email`='" + this.params.get('username') + "'," +
-                                          "`password`=AES_ENCRYPT('" + this.params.get('password') + "', '" + this.params.get('userToken') + "'), " +
-                                          "`token`=AES_ENCRYPT('" + this.params.get('token') + "', '" + this.params.get('userToken') + "') " +
-                                          "WHERE `environmentID` = " + environmentId + " AND " +
-                                          "`userID`=(SELECT `ID` FROM `user` WHERE `auth_id` = '" + this.params.get('userAuthId') + "' LIMIT 1)");
+                    this.connection.query("UPDATE `EnvironmentCredential` SET `Username`='" + this.params.get('username') + "'," +
+                                          "`Password`=AES_ENCRYPT('" + this.params.get('password') + "', '" + this.params.get('userToken') + "'), " +
+                                          "`Token`=AES_ENCRYPT('" + this.params.get('token') + "', '" + this.params.get('userToken') + "') " +
+                                          "WHERE `EnvironmentID` = " + environmentId + " AND " +
+                                          "`UserID`=(SELECT `ID` FROM `User` WHERE `Username` = '" + this.params.get('userAuthId') + "' LIMIT 1)");
                 }.bind(this));
             }
         }.bind(this));
@@ -242,8 +249,8 @@ CreateEnvironmentController.prototype.handleSfOpticonData = function handleSfOpt
     while (true) {
         if (data.toString().indexOf(this.createEnvironentProgressDef[progress].trigger) != -1) {
             // Found our trigger
-            this.connection.query("INSERT INTO `jobLog` (`jobID`, `text`, `time`) VALUE (" + this.jobId + ", '" + this.createEnvironentProgressDef[progress].message + "', NOW());");
-            this.connection.query("UPDATE `job` SET `progress` = " + this.createEnvironentProgressDef[progress].progress + ", `status` = '" + this.createEnvironentProgressDef[progress].message + "' WHERE `ID` = " + this.jobId);
+            this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", '" + this.createEnvironentProgressDef[progress].message + "', NOW());");
+            this.connection.query("UPDATE `Job` SET `Progress` = " + this.createEnvironentProgressDef[progress].progress + ", `Status` = '" + this.createEnvironentProgressDef[progress].message + "' WHERE `ID` = " + this.jobId);
             this.lastProgress = progress;
             break;
         } else if (this.createEnvironentProgressDef[progress].always == true) {

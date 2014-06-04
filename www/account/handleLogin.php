@@ -48,8 +48,10 @@
                 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
 
                 $response = curl_exec($ch);
+//                var_dump($response);
+//                die();
                 if(!$response) {
-//                  var_dump($response);
+//                    var_dump($response);
                     die("Couldn't cURL profile service");
                 }
 //                echo $response;

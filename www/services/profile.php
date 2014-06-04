@@ -44,7 +44,7 @@ try {
     }
 }
 
-if (!$bypassAuth && verifyLogin("../enterprise.wsdl.xml") == false) {
+if (!$bypassAuth && verifyLogin("../account/enterprise.wsdl.xml") == false) {
     header('HTTP/1.1 401 Unauthorized');
     die('Unauthorized');
 }
@@ -115,7 +115,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
     if ($rcsPassword != '') {
         outputLine('Found rcsPassword: ' . $rcsPassword);
     }
-    $result = $db_con->query("SELECT `ID`, `auth_id`, `token_hash`, `gitEmail`, `gitName`, `rcsUsername`, `rcsPassword` FROM `user` WHERE `auth_id` = '" . $_SESSION['sfUsername'] . "' LIMIT 1");
+    $result = $db_con->query("SELECT `ID`, `Username`, `TokenHash`, `GitEmail`, `GitName`, `GitUsername`, `GitPassword` FROM `User` WHERE `Username` = '" . $_SESSION['sfUsername'] . "' LIMIT 1");
     if (!$result) {
         die('Error querying user table');
         // outputLine($db_con->error);
@@ -123,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
         if ($result->num_rows == 0) {
             session_write_close();
             outputLine('Creating user profile');
-            $dbStr = "INSERT INTO `user` (`auth_id`, `token_hash`, `gitEmail`, `gitName`, `rcsUsername`, `rcsPassword`) VALUES ('"
+            $dbStr = "INSERT INTO `User` (`Username`, `TokenHash`, `GitEmail`, `GitName`, `GitUsername`, `GitPassword`) VALUES ('"
                 . $authId .
                 ($token != "" ? "', '" . hash('sha512', $token) : "', '") .
                 ($gitEmail != "" ? "', '" . $gitEmail : "', '") .
@@ -146,12 +146,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
                 $_SESSION['tokenChanged'] = true;
                 session_write_close();
             }
-            $dbStr = ("UPDATE `user` SET `auth_id`='" . $authId . "', `token_hash`='" . $tokenHash .
-                ($gitEmail != "" ? "', `gitEmail`='". $gitEmail : "") .
-                ($gitName != "" ? "', `gitName`='". $gitName : "") .
-                ($rcsUsername != "" ? "', `rcsUsername`='". $rcsUsername : "") .
-                (($token != "" && $rcsPassword != "") ? "', `rcsPassword`=AES_ENCRYPT('" . $rcsPassword . "', '" . $token . "')" : "'") .
-                " WHERE `auth_id`='"
+            $dbStr = ("UPDATE `User` SET `Username`='" . $authId . "', `TokenHash`='" . $tokenHash .
+                ($gitEmail != "" ? "', `GitEmail`='". $gitEmail : "") .
+                ($gitName != "" ? "', `GitName`='". $gitName : "") .
+                ($rcsUsername != "" ? "', `GitUsername`='". $rcsUsername : "") .
+                (($token != "" && $rcsPassword != "") ? "', `GitPassword`=AES_ENCRYPT('" . $rcsPassword . "', '" . $token . "')" : "'") .
+                " WHERE `Username`='"
                 . $authId .
                 "'");
             // die($dbStr);

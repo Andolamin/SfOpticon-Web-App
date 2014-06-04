@@ -17,86 +17,66 @@
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
                 <strong>Good to go!</strong> This page is fully attached to data.
             </div>
-            <?php
-                $attemptedToSaveCredentials = false;
-                $savedCredentials = false;
-                if (isset($_POST['email']) &&
-                    isset($_POST['password']) &&
-                    isset($_POST['token']) &&
-                    isset($_POST['environment'])) {
-                    $attemptedToSaveCredentials = true;
-                    try {
-                        $db_con = connectDBi();
-                    } catch (Exception $e) {
-                        if ($e->getMessage() == "100") {
-                            $error = mysql_error();
-                            die("Error connecting to the database");
-                        } else if ($e->getMessage() == "101") {
-                            $error = mysql_error();
-                            die("Error selecting the database");
-                        }
-                    }
-                    $dbStr = "UPDATE `environmentCredential` SET `email`='" . $_POST['email'] . "'," .
-                             "`password`=AES_ENCRYPT('" . $_POST['password'] . "', '" . $_SESSION['sfToken'] . "'), " .
-                             "`token`=AES_ENCRYPT('" . $_POST['token'] . "', '" . $_SESSION['sfToken'] . "') " .
-                             "WHERE `environmentID` = " . $_POST['environment'] . " AND " .
-                             "`userID`=(SELECT `ID` FROM `user` WHERE `auth_id` = '" . $_SESSION['sfUsername'] . "' LIMIT 1)";
-                    $result = $db_con->query($dbStr);
-                    if ($result) {
-                        auditLog(null, 'Updated credentials for env <a href="org.html?orgId=' . $_POST['environment'] . '">#' . $_POST['environment']) . '</a>';
-                        $savedCredentials = true;
-                    }
-                    $db_con->close();
-                }
-                if ($attemptedToSaveCredentials && $savedCredentials) {
-            ?>
-            <div class="alert alert-success alert-dismissable">
-                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Awesome!</strong> Your updated credentials were saved successfully.
-            </div>
-            <?php
-                } else if ($attemptedToSaveCredentials && !$savedCredentials) {
-            ?>
-            <div class="alert alert-danger alert-dismissable">
-                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Bummer!</strong> Your updated credentials weren't saved.
-            </div>
-            <?php
-                }
-                try {
-                    $db_con = connectDBi();
-                } catch (Exception $e) {
-                    if ($e->getMessage() == "100") {
-                        $error = mysql_error();
-                        die("Error connecting to the database");
-                    } else if ($e->getMessage() == "101") {
-                        $error = mysql_error();
-                        die("Error selecting the database");
-                    }
-                }
+<?php
+    try {
+        $db_con = connectDBi();
+    } catch (Exception $e) {
+        if ($e->getMessage() == "100") {
+            $error = mysql_error();
+            die("Error connecting to the database");
+        } else if ($e->getMessage() == "101") {
+            $error = mysql_error();
+            die("Error selecting the database");
+        }
+    }
 
-                $dbStr = ("SELECT `env`.`ID`, `env`.`name`, `env`.`production`, `env`.`location`, `env`.`locked` " .
-						"FROM `environment` as `env`");
-                $result = $db_con->query($dbStr);
-                $numRows = $result->num_rows;
-                $count = 1;
-                while ($row = $result->fetch_assoc()) {
-            ?>
+    try {
+        $sfopticon_db_con = connectDBi('sfopticon');
+    } catch (Exception $e) {
+        if ($e->getMessage() == "100") {
+            $error = mysql_error();
+            die("Error connecting to the database");
+        } else if ($e->getMessage() == "101") {
+            $error = mysql_error();
+            die("Error selecting the database");
+        }
+    }
+
+    $dbStr = ("SELECT `ID`, `Name`, `Production`, `Location` FROM `Environment`");
+    $result = $db_con->query($dbStr);
+    $numRows = $result->num_rows;
+    $count = 1;
+    while ($row = $result->fetch_assoc()) {
+        $lockedQuery = "SELECT `id`, `locked` FROM `environments` WHERE `name` = '" . $row['Name'] . "'";
+        $lockedResult = $sfopticon_db_con->query($lockedQuery);
+        $locked = false;
+        if ($lockedRow = $lockedResult->fetch_assoc()) {
+            $locked = ($lockedRow['locked'] == 1);
+        }
+?>
             <div class="panel panel-info">
                 <div class="panel-heading">
                     <h3 class="panel-title">
-                        <a href="org.html?orgId=<?php echo $row['ID']; ?>"><?php echo $row['name']; ?> <?php if ($row['production']) { echo '(production)'; } ?></a>
+                        <a href="org.html?orgId=<?php echo $row['ID']; ?>"><?php echo $row['Name']; ?> <?php if ($row['Production']) { echo '(production)'; } ?></a>
+<?php
+       if ($locked) {
+?>
+                        <i class="fa fa-lock" style="float: right; font-size: 19px;"></i>
+<?php
+        }
+?>
                     </h3>
                 </div>
                 <div class="panel-body">
-                    <?php echo $row['location']; ?>
+                    <?php echo $row['Location']; ?>
                 </div>
             </div>
-            <?php
-                    $count++;
-                }
-                $db_con->close();
-            ?>
+<?php
+        $count++;
+    }
+    $db_con->close();
+    $sfopticon_db_con->close();
+?>
             <ul class="pager">
                 <li class="next"><a href="org.html?orgId=-1">Add New</a></li>
             </ul>

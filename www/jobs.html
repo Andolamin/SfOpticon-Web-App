@@ -104,7 +104,7 @@
             <div class="input-group" style="margin-bottom: 20px; width: 100%;">
                 <input type="text" class="form-control" disabled value="Filter only: ">
                 <div class="input-group-btn" style="width: 50%">
-                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="width: 100%">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="width: 100%; border-radius: 0;">
                         Status <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" style="width: 100%;">
@@ -116,16 +116,16 @@
                     </ul>
                 </div>
                 <div class="input-group-btn" style="width: 30%">
-                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="width: 100%">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="width: 100%;">
                         Environment <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" style="width: 100%;">
 <?php
-    $dbStr = "SELECT `ID`, `name` FROM `environment`";
+    $dbStr = "SELECT `ID`, `Name` FROM `Environment`";
     $result = $db_con->query($dbStr);
     while ($row = $result->fetch_assoc()) {
 ?>
-                        <li><a href="#" onclick="filterEnvironment(<?php echo $row['ID']; ?>)"><?php echo $row['name']; ?></a></li>
+                        <li><a href="#" onclick="filterEnvironment('<?php echo $row['ID']; ?>')"><?php echo $row['Name']; ?></a></li>
 <?php
     }
 ?>
@@ -142,31 +142,34 @@
     if (isset($_GET['filter'])) {
         switch($_GET['filter']) {
             case 1: // In-progress
-                $filterString = "`progress` < 100";
+                $filterString = "`Progress` < 100";
                 break;
             case 2: // Complete
-                $filterString = "`status` = 'Complete'";
+                $filterString = "`Status` = 'Complete'";
                 break;
             case 3: // Failed
-                $filterString = "`status` != 'Complete' AND `progress` = 100";
+                $filterString = "`Status` != 'Complete' AND `Progress` = 100";
                 break;
         }
     }
     if (isset($_GET['org']) && $_GET['org'] != 0) {
-        $filterString .= ' AND `environmentID` = ' . $_GET['org'];
+        $filterString = 'JOIN `EnvironmentJob` ON `Job`.`ID` = `EnvironmentJob`.`JobID` WHERE `EnvironmentJob`.`EnvironmentID` = ' . $_GET['org'] . ' AND ' . $filterString;
+    } else {
+        $filterString = 'WHERE ' . $filterString;
     }
-    $dbStr = "SELECT * FROM `job` WHERE " . $filterString . " ORDER BY id DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
+    $dbStr = "SELECT `Job`.`ID`, `Status`, `Progress`, `Type` FROM `Job` " . $filterString . " ORDER BY `ID` DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
+    // echo $dbStr;
     $result = $db_con->query($dbStr);
     $numRows = $result->num_rows;
     $count = 0;
     while ($row = $result->fetch_assoc()) {
         if ($count < $paginationSize) {
             $status = 1; // Default to in progress
-            if ($row['progress'] == 100) {
+            if ($row['Progress'] == 100) {
                 // Complete, lets check for good/bad
-                if (strpos($row['status'], 'Failed') !== false) {
+                if (strpos($row['Status'], 'Failed') !== false) {
                     $status = 2;
-                } else if (strpos($row['status'], 'Complete') !== false) {
+                } else if (strpos($row['Status'], 'Complete') !== false) {
                     $status = 3;
                 }
             }
@@ -174,16 +177,16 @@
             <div class="panel <?php echo ($status == 1 ? 'panel-info' : ($status == 2 ? 'panel-danger' : 'panel-success')); ?>">
                 <div class="panel-heading">
                     <h3 class="panel-title">
-                        <a href="job.html?jobId=<?php echo $row['ID']; ?>"><?php echo $row['type']; ?></a>
+                        <a href="job.html?jobId=<?php echo $row['ID']; ?>"><?php echo $row['Type']; ?></a>
                     </h3>
                 </div>
                 <div class="panel-body">
-                    <?php echo $row['status']; ?>
+                    <?php echo $row['Status']; ?>
                 </div>
-                <div class="progress <?php echo $row['progress'] < 100 ? 'progress-striped active' : ''; ?>">
-                    <div class="progress-bar <?php echo ($status == 1 ? 'progress-bar-info' : ($status == 2 ? 'progress-bar-danger' : 'progress-bar-success')); ?>"  role="progressbar" aria-valuenow="<?php echo $row['progress']; ?>" aria-valuemin="0" aria-valuemax="100" style="width: <?php echo $row['progress']; ?>%">
+                <div class="progress <?php echo $row['Progress'] < 100 ? 'progress-striped active' : ''; ?>">
+                    <div class="progress-bar <?php echo ($status == 1 ? 'progress-bar-info' : ($status == 2 ? 'progress-bar-danger' : 'progress-bar-success')); ?>"  role="progressbar" aria-valuenow="<?php echo $row['Progress']; ?>" aria-valuemin="0" aria-valuemax="100" style="width: <?php echo $row['Progress']; ?>%">
 						<span class="sr-only">
-                            <?php echo $row['progress']; ?>% Complete
+                            <?php echo $row['Progress']; ?>% Complete
                         </span>
                     </div>
                 </div>
