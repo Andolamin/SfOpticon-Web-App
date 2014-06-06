@@ -54,7 +54,7 @@
 						}
 					?>
 				</label>
-				<input type="email" name="username" id="username" <?php if (isset($_POST['username'])) { echo ('value="'.$_POST['username'].'"'); }?> />
+				<input type="text" name="username" id="username" <?php if (isset($_POST['username'])) { echo ('value="'.$_POST['username'].'"'); }?> />
 
 				<label>Password
 					<?php
@@ -69,7 +69,7 @@
 
 				<label>Security Token
 					<?php
-						if (isset($badCredentials) && $badCredentials == true && (!isset($_POST['token']) || $_POST['token'] == '')){
+						if (isset($badCredentials) && $badCredentials == true && (!isset($_POST['token']) || $_POST['token'] == '')) {
 					?>
 						<span class="small" style="color:red;">Try including your security token</span>
 					<?php

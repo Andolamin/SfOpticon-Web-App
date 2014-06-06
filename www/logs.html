@@ -18,6 +18,11 @@
 <head>
     <title>Audit Logs - PS SfOpticon</title>
 	<?php include_once(dirname(__FILE__) . '/head.html'); ?>
+    <style>
+        a {
+            color: inherit;
+        }
+    </style>
 </head>
 <body>
     <div id="wrapper">
@@ -60,7 +65,7 @@
                         if (!isset($_GET['start'])) {
                             $_GET['start'] = 0;
                         }
-						$dbStr = "SELECT `ID`, `Username`, `Action`, `Time` FROM `AuditLog` WHERE 1 ORDER BY `ID` DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
+						$dbStr = "SELECT `ID`, `Username`, `UserID`, `Action`, `Time` FROM `AuditLog` WHERE 1 ORDER BY `ID` DESC LIMIT " . ($paginationSize + 1) . ' OFFSET ' . $_GET['start'];
                         $result = $db_con->query($dbStr);
                         $numRows = $result->num_rows;
                         $count = 0;
@@ -69,7 +74,7 @@
                     ?>
                     <tr>
                         <td><?php echo $row['ID']; ?></td>
-                        <td><?php echo $row['Username']; ?></td>
+                        <td><a href="profile.html?userId=<?php echo $row['UserID']; ?>"><?php echo $row['Username']; ?></a></td>
                         <td><?php echo $row['Action']; ?></td>
                         <td><?php echo $row['Time']; ?></td>
                     </tr>

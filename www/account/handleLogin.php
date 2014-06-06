@@ -40,22 +40,11 @@
                 $_SESSION['sfToken'] = SECURITY_TOKEN;
                 session_write_close();
 
-//              $_REQUEST['authID'] = USERNAME;
-                $data = array("sid"=>session_id());
-                $ch = curl_init('http://localhost/' . 'services/profile.php');
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT");
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+                include_once('storeProfile.php');
 
-                $response = curl_exec($ch);
-//                var_dump($response);
-//                die();
-                if(!$response) {
-//                    var_dump($response);
-                    die("Couldn't cURL profile service");
+                if(!$result) {
+                    die("Couldn't update user profile");
                 }
-//                echo $response;
-//                echo "<br />";
             }
 
 //            die();

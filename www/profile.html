@@ -1,21 +1,171 @@
 <?php
     $root = 'profile.html';
+
+    try {
+        $db_con = connectDBi();
+    } catch (Exception $e) {
+        if ($e->getMessage() == "100") {
+            $error = mysql_error();
+            die("Error connecting to the database");
+        } else if ($e->getMessage() == "101") {
+            $error = mysql_error();
+            die("Error selecting the database");
+        }
+    }
+
+    global $userInfo;
+    $userId = -1;
+
+    $dbStr = "SELECT `ID` FROM `User` WHERE `Username` = '" . $userInfo->userName . "'";
+    $result = $db_con->query($dbStr);
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $myUserId = $row['ID'];
+    }
+
+    if (isset($_GET['userId'])) {
+        $userId = $_GET['userId'];
+    } else {
+        $userId = $myUserId;
+    }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <title>Profile - PS SfOpticon</title>
 	<?php include_once(dirname(__FILE__) . '/head.html'); ?>
+    <style type="text/css">
+        .avatar {
+            width: 60%;
+            margin: 0 auto 20px auto;
+        }
+
+        .infoBox {
+            width: 100%;
+        }
+    </style>
+
+    <style type="text/css" media="only screen and (min-width: 1000px)">
+        .avatar {
+            width: 28%;
+            margin: 0 2% 0 0;
+            float: left;
+        }
+
+        .infoBox {
+            width: 70%;
+            float: right;
+        }
+    </style>
+
+    <style type="text/css" media="only screen and (min-width: 1500px)">
+        .avatar {
+            width: 23%;
+            margin: 0 2% 0 0;
+        }
+
+        .infoBox {
+            width: 75%;
+        }
+    </style>
 </head>
 <body>
     <div id="wrapper">
         <?php include_once(dirname(__FILE__) . '/header.html'); ?>
-
         <div id="page-wrapper">
-            <div class="alert alert-danger alert-dismissable">
+            <div class="alert alert-success alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Mockup:</strong> This page is not yet attached to actual data.
+                <strong>Good to go!</strong> Profile Information is controlled by Salesforce. Avatar is pulled from Gravatar. Github Information is attached to database.
             </div>
+<?php
+    if (isset($_POST['action']) && $_POST['action'] == 'save') {
+        $dbStr = "UPDATE `User` SET `GitName` = '" . $_POST['GitName'] . "', `GitEmail` = '" . $_POST['GitEmail'] . "', `GitUsername` = '" . $_POST['GitUsername'] . "', `GitPassword` = AES_ENCRYPT('" . $_POST['GitPassword'] . "', '" . $_SESSION['sfToken'] . "') WHERE `ID` = " . $myUserId; // Should only ever save your own user account
+        $result = $db_con->query($dbStr);
+        if ($result) {
+?>
+            <div class="alert alert-success alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                <strong>SUCCESS:</strong> Your settings were saved.
+            </div>
+<?php
+        } else {
+?>
+            <div class="alert alert-danger">
+                <strong>ERROR:</strong> Your settings were not saved.
+            </div>
+<?php
+        }
+    }
+    $dbStr = "SELECT `FullName`, `Email`, `Username`, `GitName`, `GitEmail`, `GitUsername`, AES_DECRYPT(`GitPassword`, '" . $_SESSION['sfToken'] . "') as `GitPassword` FROM `User` WHERE `ID` = " . $userId;
+    $result = $db_con->query($dbStr);
+    if ($result->num_rows == 0) {
+?>
+            <div class="alert alert-danger">
+                <strong>Error:</strong> No user was found for that user ID.
+            </div>
+<?php
+    } else {
+        $row = $result->fetch_assoc();
+?>
+            <div class="panel panel-default avatar">
+                <div class="panel-body" style="padding: 0">
+                    <img src="https://www.gravatar.com/avatar/<?php echo md5($row['Email']); ?>?s=512" style="width: 100%;">
+                </div>
+            </div>
+            <div class="panel panel-default infoBox">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Profile Information</h3>
+                </div>
+                <div class="list-group">
+                    <div class="input-group">
+                        <span class="input-group-addon" style="min-width: 100px;">Name: </span>
+                        <input type="text" class="form-control" value="<?php echo $row['FullName']; ?>" readonly>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-addon" style="min-width: 100px;">Email: </span>
+                        <input type="text" class="form-control" value="<?php echo $row['Email']; ?>" readonly>
+                    </div>
+                    <div class="input-group">
+                        <span class="input-group-addon" style="min-width: 100px;">Username: </span>
+                        <input type="text" class="form-control" value="<?php echo $row['Username']; ?>" readonly>
+                    </div>
+                </div>
+            </div>
+<?php
+        if ($userId == $myUserId) {
+?>
+            <form method="POST">
+                <input type="hidden" name="action" value="save" />
+                <div class="panel panel-default infoBox">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">Github Information</h3>
+                    </div>
+                    <div class="list-group">
+                        <div class="input-group">
+                            <span class="input-group-addon" style="min-width: 100px;">Name: </span>
+                            <input type="text" class="form-control" name="GitName" value="<?php echo $row['GitName']; ?>">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-addon" style="min-width: 100px;">Email: </span>
+                            <input type="text" class="form-control" name="GitEmail" value="<?php echo $row['GitEmail']; ?>">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-addon" style="min-width: 100px;">Username: </span>
+                            <input type="text" class="form-control" name="GitUsername" value="<?php echo $row['GitUsername']; ?>">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-addon" style="min-width: 100px;">Password: </span>
+                            <input type="password" class="form-control" name="GitPassword" value="<?php echo $row['GitPassword']; ?>">
+                        </div>
+                        <input id="saveButton" type="Submit" class="btn btn-success" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;" value="Save" />
+                    </div>
+                </div>
+            </form>
+<?php
+        }
+    }
+?>
         </div>
         <!-- /#page-wrapper -->
     </div>
