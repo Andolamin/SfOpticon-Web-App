@@ -1,5 +1,21 @@
 <?php
     $root = 'deploy.html';
+    include_once(dirname(__FILE__) . '/functions.php');
+
+    try {
+        $db_con = connectDBi();
+    } catch (Exception $e) {
+        if ($e->getMessage() == "100") {
+            $error = mysql_error();
+            die("Error connecting to the database");
+        } else if ($e->getMessage() == "101") {
+            $error = mysql_error();
+            die("Error selecting the database");
+        }
+    }
+
+    $dbStr = "SELECT `Name`, `Production` FROM `Environment`";
+    $result = $db_con->query($dbStr);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -8,6 +24,11 @@
 	<?php include_once(dirname(__FILE__) . '/head.html'); ?>
     <link rel="stylesheet" type="text/css" href="plugins/datetime/css/datetimepicker.min.css" />
     <script type="text/javascript">
+        $(function(){
+            console.log('Initializing Tooltips');
+            $('label[data-toggle="tooltip"]').tooltip();
+        });
+
         var dateTimeLoaded = false;
         var dateTimeNeeded = false; // Set up picker immediately for now
 
@@ -57,9 +78,62 @@
                     break;
             }
         }
+
+        function actionChanged() {
+            setTimeout(function() {
+                var action = $('input[name="action"]:checked').val();
+                switch (action) {
+                    case 'Scan':
+                        $('.single').css('display', 'table');
+                        $('.single button').removeClass('disabled');
+                        $('.multiple').css('display', 'none');
+                        $('.multiple button').addClass('disabled');
+                        break;
+                    case 'Deploy':
+                        $('.single').css('display', 'none');
+                        $('.single button').addClass('disabled');
+                        $('.multiple').css('display', 'table');
+                        $('.multiple button.origin').removeClass('disabled');
+                        $('.multiple button.target').addClass('disabled');
+                        break;
+                    case 'Rebase':
+                        $('.single').css('display', 'table');
+                        $('.single button').removeClass('disabled');
+                        $('.multiple').css('display', 'none');
+                        $('.multiple button').addClass('disabled');
+                        break;
+                }
+                $('button.origin').html('Origin <span class="caret"></span>');
+                $('button.target').html('Target <span class="caret"></span>');
+            }, 10);
+        }
+
+        function originChanged(inElement) {
+            updateDropdownText(inElement);
+            $('.multiple button.target').removeClass('disabled');
+            $('.multiple button.target + ul li').css('display', 'list-item');
+            $('.multiple button.target + ul li[data-organization="' + $(inElement.parentNode).data('organization') + '"]').css('display', 'none');
+        }
+
+        function targetChanged(inElement) {
+            updateDropdownText(inElement);
+        }
+
+        function updateDropdownText(inElement) {
+            $(inElement.parentNode.parentNode.parentNode.children[0]).html($(inElement).html() + ' <span class="caret"></span>');
+        }
     </script>
     <script type="text/javascript" src="plugins/moment/moment.min.js"></script>
     <script type="text/javascript" src="plugins/datetime/js/datetimepicker.min.js" async="async" onload="dateTimeLoad()"></script>
+    <style type="text/css">
+        .tooltip-arrow {
+            opacity: .7;
+        }
+        .tooltip-inner {
+            font-size: 14px;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+    </style>
 </head>
 <body>
     <div id="wrapper">
@@ -70,49 +144,94 @@
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
                 <strong>Mockup:</strong> This page is not yet attached to actual data.
             </div>
-            <div class="panel panel-info">
-                <!-- Default panel contents -->
-                <div class="panel-heading">Step 1) Select Organizations</div>
-                <div class="btn-group btn-group-justified">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Source <span class="caret"></span></button>
-                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
-                            <li><a href="#">PS-Salesforce</a></li>
-                            <li><a href="#">Development</a></li>
-                        </ul>
-                    </div>
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-default dropdown-toggle disabled" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Destination <span class="caret"></span></button>
-                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
-                            <li><a href="#">PS-Salesforce</a></li>
-                            <li><a href="#">Development</a></li>
-                        </ul>
-                    </div>
-                </div>
+<?php
+    if ($result->num_rows == 1) {
+?>
+            <div class="alert alert-warning">
+                <strong>Warning:</strong> Only Scan is available until at least two organizations are set up.
             </div>
-            <div class="panel panel-info">
+<?php
+    } else if ($result->num_rows == 0) {
+?>
+            <div class="alert alert-danger">
+                <strong>Warning:</strong> No deployment actions are available until at least one organization is set up.
+            </div>
+<?php
+    }
+?>
+            <div class="panel panel-info action">
                 <!-- Default panel contents -->
-                <div class="panel-heading">Step 2) Select Action</div>
+                <div class="panel-heading">Step 1) Select Action</div>
                 <div class="btn-group btn-group-justified" data-toggle="buttons">
-                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;">
-                        <input type="radio" class="btn btn-default">Compare</button>
+                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
+                           data-toggle="tooltip" data-placement="top" title="Scan for changes to target organization and check them into the respository." data-container="body">
+                        <input type="radio" class="btn btn-default" name="action" value="Scan">Scan</button>
                     </label>
-                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;">
-                        <input type="radio" class="btn btn-default">Deploy</button>
+                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
+                           data-toggle="tooltip" data-placement="top" title="Deploy all differences from origin to target organization. Scans and checks in changes for both origin and target prior to deployment." data-container="body">
+                        <input type="radio" class="btn btn-default" name="action" value="Deploy">Deploy</button>
                     </label>
-                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;">
-                        <input type="radio" class="btn btn-default">Rebase</button>
+                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
+                           data-toggle="tooltip" data-placement="top" title="Rebases the target organization. Scans and checks in changes for both production and target prior to rebase." data-container="body">
+                        <input type="radio" class="btn btn-default" name="action" value="Rebase">Rebase</button>
                     </label>
                 </div>
             </div>
-            <div class="panel panel-info">
+            <div class="panel panel-info organizations">
+                <!-- Default panel contents -->
+                <div class="panel-heading">Step 2) Select Organization(s)</div>
+                <div class="btn-group btn-group-justified multiple">
+                    <div class="btn-group" style="width: 50%; display: inline-block;">
+                        <button type="button" class="btn btn-default dropdown-toggle disabled origin" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Origin <span class="caret"></span></button>
+                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
+<?php
+    $result->data_seek(0); // Return to the beginning of the set
+    while ($row = $result->fetch_assoc()) {
+?>
+                            <li data-organization="<?php echo $row['Name']; ?>" data-production="<?php echo $row['Production']; ?>"><a href="javascript:void(0)" onclick="originChanged(this)"><?php echo $row['Name']; ?></a></li>
+<?php
+    }
+?>
+                        </ul>
+                    </div>
+                    <div class="btn-group" style="width: 50%; display: inline-block; margin-left: 0;">
+                        <button type="button" class="btn btn-default dropdown-toggle disabled target" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Target <span class="caret"></span></button>
+                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
+<?php
+    $result->data_seek(0); // Return to the beginning of the set
+    while ($row = $result->fetch_assoc()) {
+?>
+                            <li data-organization="<?php echo $row['Name']; ?>" data-production="<?php echo $row['Production']; ?>"><a href="javascript:void(0)" onclick="targetChanged(this)"><?php echo $row['Name']; ?></a></li>
+<?php
+    }
+?>
+                        </ul>
+                    </div>
+                </div>
+                <div class="btn-group btn-group-justified single" style="display: none;">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-default dropdown-toggle disabled target" data-toggle="dropdown">Target <span class="caret"></span></button>
+                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
+<?php
+    $result->data_seek(0); // Return to the beginning of the set
+    while ($row = $result->fetch_assoc()) {
+?>
+                            <li data-organization="<?php echo $row['Name']; ?>" data-production="<?php echo $row['Production']; ?>"><a href="javascript:void(0)" onclick="targetChanged(this)"><?php echo $row['Name']; ?></a></li>
+<?php
+    }
+?>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="panel panel-info time">
                 <!-- Default panel contents -->
                 <div class="panel-heading">Step 3) Select Time</div>
                 <div class="btn-group btn-group-justified" data-toggle="buttons">
-                    <label class="scheduleType btn btn-default active" style="border-radius: 0;">
+                    <label class="scheduleType btn btn-default active disabled" style="border-radius: 0;">
                         <input type="radio" class="btn btn-default" checked  onchange="scheduleTypeChanged('Now')"><span>Now</span>
                     </label>
-                    <label class="scheduleType btn btn-default" style="border-radius: 0;">
+                    <label class="scheduleType btn btn-default disabled" style="border-radius: 0;">
                         <input type="radio" class="btn btn-default" onchange="scheduleTypeChanged('Future')"><span>Future</span>
                     </label>
                 </div>
@@ -123,12 +242,12 @@
                     <input id="schedulePicker" disabled type="text" class="form-control" placeholder="Scheduled Date" style="border-top-left-radius: 0; border-top-right-radius: 0;">
                 </div>
             </div>
-            <div class="panel panel-info">
+            <div class="panel panel-info go">
                 <!-- Default panel contents -->
                 <div class="panel-heading">Step 4) Go!</div>
                 <div class="btn-group btn-group-justified">
                     <div class="btn-group">
-                        <button type="button" class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;">Make it so! <span class="fa fa-caret-right"></span></button>
+                        <button type="button" class="btn btn-default disabled" style="border-top-left-radius: 0; border-top-right-radius: 0;">Make it so! <span class="fa fa-caret-right"></span></button>
                     </div>
                 </div>
             </div>

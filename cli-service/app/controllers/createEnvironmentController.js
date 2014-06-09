@@ -132,7 +132,7 @@ CreateEnvironmentController.prototype.handleCommand = function handleCommand(soc
     });
     this.connection.connect();
     this.connection.query('USE ' + settings.mysqlDB);
-    this.connection.query("INSERT INTO `Job` (`Status`, `Progress`, `StartTime`, `Type`) VALUES ('Received', '0.00', NOW(), 'Create Environment');",
+    this.connection.query("INSERT INTO `Job` (`Status`, `Progress`, `StartTime`, `Type`) VALUES ('Received', '0.00', NOW(6), 'Create Environment');",
         function (err, result) {
             if (err) {
                 console.log('(' + this.socket.key + '): MySQL error: ' + err.message);
@@ -151,7 +151,7 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
 //    this.socket.write('Job ID: ' + this.jobId + '\r\n');
 //    this.socket.destroy();
     console.log('(' + this.socket.key + '): Job ID: ' + this.jobId);
-    this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Received', NOW())",
+    this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Received', NOW(6))",
         function(err) {
             if (err) {
                 console.log('(' + this.socket.key + '): Error inserting log');
@@ -172,7 +172,7 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
 //        this.socket.destroy();
 
         // Update job record with error
-        this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Invalid Parameters', NOW());");
+        this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Invalid Parameters', NOW(6));");
         this.connection.query("UPDATE `Job` SET `Progress` = 100, `Status` = 'Failed: Invalid Parameters' WHERE `ID` = " + this.jobId);
         this.connection.end();
     } else {
@@ -221,7 +221,7 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
 
         child.on('exit', function() {
             if (this.lastProgress < this.createEnvironentProgressDef.length - 1) {
-                this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Job Failed', NOW());");
+                this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Job Failed', NOW(6));");
                 this.connection.query("UPDATE `Job` SET `Progress` = 100.00, `Status` = 'Failed: Job Failed' WHERE `ID` = " + this.jobId);
             } else {
                 this.connection.query("INSERT INTO `Environment` (`Name`, `Production`, `Location`) VALUES ('" + this.params.get('name') + "', " + (this.params.has('production') ? '1' : '0') + ", '" + this.params.get('location') + "')",
@@ -237,6 +237,8 @@ CreateEnvironmentController.prototype.startOrScheduleJob = function startOrSched
                                           "`UserID`=(SELECT `ID` FROM `User` WHERE `Username` = '" + this.params.get('userAuthId') + "' LIMIT 1)");
                 }.bind(this));
             }
+            var ServiceCleaner = require('../libs/serviceCleaner.js');
+            new ServiceCleaner().cleanupEnvironment(this.params.get('name'));
         }.bind(this));
     }
 };
@@ -249,7 +251,7 @@ CreateEnvironmentController.prototype.handleSfOpticonData = function handleSfOpt
     while (true) {
         if (data.toString().indexOf(this.createEnvironentProgressDef[progress].trigger) != -1) {
             // Found our trigger
-            this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", '" + this.createEnvironentProgressDef[progress].message + "', NOW());");
+            this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", '" + this.createEnvironentProgressDef[progress].message + "', NOW(6));");
             this.connection.query("UPDATE `Job` SET `Progress` = " + this.createEnvironentProgressDef[progress].progress + ", `Status` = '" + this.createEnvironentProgressDef[progress].message + "' WHERE `ID` = " + this.jobId);
             this.lastProgress = progress;
             break;
