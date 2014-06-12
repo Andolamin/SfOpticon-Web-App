@@ -1,6 +1,8 @@
 <?php
     $paginationSize = 10;
 
+
+
     // Prepare our offset values for use
     if(isset($_GET['start'])) {
         // Guard against SQL injection by enforcing that $_GET['start'] is a number
@@ -38,6 +40,9 @@
 <?php
     } else {
         $row = $result->fetch_assoc();
+        if (!headers_sent()) {
+            header("Last-Modified: " . $row['LastModified']);
+        }
         $status = 1; // Default to in progress
         if ($row['Progress'] == 100) {
             // Complete, lets check for good/bad

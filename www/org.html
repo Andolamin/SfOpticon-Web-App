@@ -11,15 +11,34 @@
     <script type="text/javascript">
         $(function () { $("input").not("[type=submit]").jqBootstrapValidation(); } );
     </script>
+    <style type="text/css">
+        .popover-footer {
+            margin: 9px -14px -9px;
+        }
+
+        .popover-footer button, .popover-footer input[type="submit"], .popover-footer input[type="button"] {
+            width: 50%;
+            border-radius: 0;
+
+        }
+
+        .popover-footer button:first-child, .popover-footer input[type="submit"]:first-child, .popover-footer input[type="button"]:first-child {
+            border-bottom-left-radius: 4px;
+        }
+
+        .popover-footer button:last-child, .popover-footer input[type="submit"]:last-child, .popover-footer input[type="button"]:last-child {
+            border-bottom-right-radius: 4px;
+        }
+    </style>
 </head>
 <body>
     <div id="wrapper">
         <?php include_once(dirname(__FILE__) . '/header.html'); ?>
 
         <div id="page-wrapper">
-            <div class="alert alert-info alert-dismissable">
+            <div class="alert alert-success alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>WIP:</strong> This page is fully attached to data. Editing org details is WIP.
+                <strong>Good to go!</strong> This page is fully attached to data.
             </div>
 <?php
     if (isset($_POST['action']) && $_POST['action'] == 'add') {
@@ -60,6 +79,13 @@
             <div class="alert alert-success">
                 <strong>Success:</strong> Job <a href="job.html?jobId=<?php echo $resultComponents[2]; ?>">#<?php echo $resultComponents[2]; ?></a> was started successfully.
             </div>
+            <script type="text/javascript">
+                $(function() {
+                    setTimeout(function() {
+                        window.location.href = '/job.html?jobId=<?php echo $resultComponents[2]; ?>';
+                    }, 2000);
+                })
+            </script>
 <?php
                     } else {
 ?>
@@ -77,6 +103,69 @@
                 <strong>Error:</strong> Could not connect to SfOpticon service.
             </div>
 <?php
+        }
+    } else if (isset($_POST['action']) && $_POST['action'] == 'delete') {
+        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+        socket_set_block($socket);
+        $communicationError = false;
+        if ($socket === false) {
+            $communicationError = true;
+        } else {
+            $result = socket_connect($socket, "localhost", 43442);
+            if ($result === false) {
+                $communicationError = true;
+            } else {
+                $out = '';
+                while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                if ($out !== "Ready!") {
+                    $communicationError = true;
+                } else {
+                    try {
+                        $db_con = connectDBi();
+                    } catch (Exception $e) {
+                        if ($e->getMessage() == "100") {
+                            $error = mysql_error();
+                            die("Error connecting to the database");
+                        } else if ($e->getMessage() == "101") {
+                            $error = mysql_error();
+                            die("Error selecting the database");
+                        }
+                    }
+                    $dbStr = "SELECT `GitUsername`, AES_DECRYPT(`GitPassword`, '" . $_SESSION['sfToken'] . "') as `GitPassword` FROM `User` WHERE `Username` = '" . $userInfo->userName . "'";
+                    $result = $db_con->query($dbStr);
+                    $row = $result->fetch_assoc();
+                    $message = "delete environment " .
+                               "--name=" . $_POST['name'] . " " .
+                               "--gitUsername=" . $row['GitUsername'] . " " .
+                               "--gitPassword=" . $row['GitPassword'] . " " .
+                               "--production=" . ($_POST['production'] == 1 ? "true" : "false") . "\r\n";
+                    socket_write($socket, $message, strlen($message));
+                    $out = '';
+                    while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                    if (strpos($out, 'SUCCESS') !== false) {
+                        $resultComponents = explode(': ', $out);
+                        auditLog(null, 'Started delete environment job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]);
+            ?>
+            <div class="alert alert-success">
+                <strong>Success:</strong> Job <a href="job.html?jobId=<?php echo $resultComponents[2]; ?>">#<?php echo $resultComponents[2]; ?></a> was started successfully.
+            </div>
+            <?php
+                    } else {
+?>
+            <div class="alert alert-danger">
+                <strong>Error:</strong> There was an error creating the job.
+            </div>
+            <?php
+                    }
+                }
+            }
+        }
+        if ($communicationError) {
+?>
+            <div class="alert alert-danger">
+                <strong>Error:</strong> Could not connect to SfOpticon service.
+            </div>
+            <?php
         }
     } else if (!isset($_GET['orgId'])) {
 ?>
@@ -144,14 +233,6 @@
                 <input type="submit" id="saveButton" value="Save" class="btn btn-success" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;" />
             </form>
 <?php
-    } else if (isset($_POST['action']) && $_POST['action'] == 'update') {
-?>
-            <div class="alert alert-danger">
-                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Error!</strong> Editing details is not functional.
-            </div>
-<?php
-        // var_dump($_POST);
     } else {
         try {
             $db_con = connectDBi();
@@ -175,8 +256,46 @@
                 die("Error selecting the database");
             }
         }
+
         // Guard against injection by enforcing that the orgId is a number
         settype($_GET['orgId'], "integer");
+
+        if (isset($_POST['action']) && $_POST['action'] == 'update') {
+            try {
+                $db_con = connectDBi();
+            } catch (Exception $e) {
+                if ($e->getMessage() == "100") {
+                    $error = mysql_error();
+                    die("Error connecting to the database");
+                } else if ($e->getMessage() == "101") {
+                    $error = mysql_error();
+                    die("Error selecting the database");
+                }
+            }
+            $dbStr = "UPDATE `EnvironmentCredential` SET " .
+                     "`Username`= '" . $_POST['username'] . "', " .
+                     "`Password`= AES_ENCRYPT('" . $_POST['password'] . "', '" . $_SESSION['sfToken'] . "'), " .
+                     "`Token`=AES_ENCRYPT('" . $_POST['token'] . "', '" . $_SESSION['sfToken'] . "') WHERE " .
+                     "`UserID` = (SELECT `Id` FROM `User` WHERE `Username` = '" . $userInfo->userName . "') AND " .
+                     "`EnvironmentID`= " . $_GET['orgId'];
+            $result = $db_con->query($dbStr);
+            if (!$result) {
+?>
+                <div class="alert alert-danger alert-dismissable">
+                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                    <strong>Error!</strong> Failed to save your credentials.
+                </div>
+<?php
+            } else {
+?>
+                <div class="alert alert-success alert-dismissable">
+                    <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                    <strong>Success!</strong> Your credentials were saved successfully.
+                </div>
+<?php
+            }
+            // var_dump($_POST);
+        }
         $dbStr = ("SELECT `env`.`ID`, `env`.`Name`, `env`.`Production`, `env`.`Location`, " .
                 "`credentials`.`Username`, AES_DECRYPT(`credentials`.`Password`, '" . $_SESSION['sfToken'] . "') as `Password`, AES_DECRYPT(`credentials`.`Token`, '" . $_SESSION['sfToken'] . "') as `Token` " .
                 "FROM `Environment` as `env` JOIN (SELECT `EnvironmentID`, `Username`, `Password`, `Token` " .
@@ -204,16 +323,16 @@
                     </div>
                     <div class="list-group">
                         <div class="input-group">
-                            <span class="input-group-addon" style="min-width: 85px;">Name</span>
-                            <input type="text" name="name" class="form-control" placeholder="e.g. production" readonly value="<?php echo $row['Name']; ?>" data-original-value="<?php echo $row['Name']; ?>">
+                            <span class="input-group-addon" style="min-width: 95px;">Name</span>
+                            <input type="text" name="name" class="form-control" placeholder="e.g. production" readonly disabled value="<?php echo $row['Name']; ?>" data-locked>
                         </div>
                         <div class="input-group">
-                            <span class="input-group-addon" style="min-width: 85px;">Location</span>
+                            <span class="input-group-addon" style="min-width: 95px;">Location</span>
                             <input type="text" name="location" class="form-control" placeholder="e.g. login.petroskills.com" readonly disabled value="<?php echo $row['Location']; ?>" data-locked>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;" data-toggle="collapse" data-parent="#accordion" href="#credentialsList">Credentials</button>
-                    <div id="credentialsList" class="list-group panel-collapse collapse">
+                    <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;">Credentials</button>
+                    <div id="credentialsList" class="list-group panel-collapse">
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 95px;">Username</span>
                             <input type="text" name="username" class="form-control" placeholder="e.g. your email" readonly value="<?php echo $row['Username']; ?>" data-original-value="<?php echo $row['Username']; ?>">
@@ -238,6 +357,25 @@
                     </div>
                 </div>
             </form>
+            <button id="deleteButton" type="button" class="btn btn-danger" style="float: right;">
+                Delete
+            </button>
+            <script type="text/javascript">
+                var popupOpen = false;
+                $(function() {
+                    var popoverElement = '<form method="POST"><input type="hidden" name="action" value="delete" /><input type="hidden" name="name" value="<?php echo $row['Name']; ?>" /><input type="hidden" name="production" value="<?php echo $row['Production']; ?>" />' +
+                                         '<div>Are you sure that you want to delete this organization? <?php if($row['Production'] == 1) { ?><em>This organization is the production organization. Deleting it will also delete all other organizations.</em><?php } ?></div>' +
+                                         '<div class="popover-footer"><input type="submit" class="btn btn-danger" value="Delete"><button type="button" class="btn btn-info" onclick="$(&quot;#deleteButton&quot;).popover(&quot;hide&quot;);">Cancel</button></div></form>';
+                    $('#deleteButton').popover({
+                        animation: true,
+                        container: 'body',
+                        placement: 'left',
+                        title: 'Confirm Delete',
+                        content: popoverElement,
+                        html: true
+                    });
+                });
+            </script>
 <?php
         }
     }

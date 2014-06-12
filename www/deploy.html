@@ -66,6 +66,7 @@
             switch(inNewValue) {
                 case 'Now':
                     $("#schedulePicker")[0].disabled = true;
+                    $('.submit').removeClass('disabled');
                     break;
                 case 'Future':
                     dateTimeNeeded = true;
@@ -105,11 +106,17 @@
                 }
                 $('button.origin').html('Origin <span class="caret"></span>');
                 $('button.target').html('Target <span class="caret"></span>');
+                $('.scheduleType').addClass('disabled');
+                $('.scheduleType').removeClass('active');
+                $('input[name="Origin"]').attr('value', '');
+                $('input[name="Target"]').attr('value', '');
+                $('.submit').addClass('disabled');
             }, 10);
         }
 
         function originChanged(inElement) {
             updateDropdownText(inElement);
+            $('input[name="Origin"]').attr('value', $(inElement).html());
             $('.multiple button.target').removeClass('disabled');
             $('.multiple button.target + ul li').css('display', 'list-item');
             $('.multiple button.target + ul li[data-organization="' + $(inElement.parentNode).data('organization') + '"]').css('display', 'none');
@@ -117,10 +124,17 @@
 
         function targetChanged(inElement) {
             updateDropdownText(inElement);
+            $('input[name="Target"]').attr('value', $(inElement).html());
+            $('.scheduleType.now').removeClass('disabled'); // .now until Future is supported. Then we'll activate both buttons
         }
 
         function updateDropdownText(inElement) {
             $(inElement.parentNode.parentNode.parentNode.children[0]).html($(inElement).html() + ' <span class="caret"></span>');
+        }
+
+        function submitForm() {
+            // TODO: Validate the form
+            $('#deployForm').submit();
         }
     </script>
     <script type="text/javascript" src="plugins/moment/moment.min.js"></script>
@@ -140,11 +154,72 @@
         <?php include_once(dirname(__FILE__) . '/header.html'); ?>
 
         <div id="page-wrapper">
-            <div class="alert alert-danger alert-dismissable">
+            <div class="alert alert-info alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Mockup:</strong> This page is not yet attached to actual data.
+                <strong>WIP:</strong> Only Scan functionality is available currently. Jobs must be run immediately, schedule functionality is not complete.
             </div>
 <?php
+    if (isset($_POST['action']) && $_POST['action'] == 'Scan') {
+        $dbStr = "SELECT `Username`, " .
+                 "AES_DECRYPT(`Password`, '" . $_SESSION['sfToken'] . "') as `Password`, " .
+                 "AES_DECRYPT(`Token`, '" . $_SESSION['sfToken'] . "') as `Token` " .
+                 "FROM `EnvironmentCredential` WHERE " .
+                 "`EnvironmentID` = (SELECT `ID` FROM `Environment` WHERE `Name` = '" . $_POST['Target'] . "') AND " .
+                 "`UserID` = (SELECT `ID` FROM `User` WHERE `Username` = '" . $userInfo->userName . "')";
+        $credentialResult = $db_con->query($dbStr);
+        if ($credentialResult->num_rows == 0) {
+?>
+            <div class="alert alert-danger">
+                <strong>Error:</strong> There was an error starting the scan job.
+            </div>
+<?php
+        } else {
+            $row = $credentialResult->fetch_assoc();
+            $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+            socket_set_block($socket);
+            $communicationError = false;
+            if ($socket === false) {
+                $communicationError = true;
+            } else {
+                $socketResult = socket_connect($socket, "localhost", 43442);
+                if ($socketResult === false) {
+                    $communicationError = true;
+                } else {
+                    $out = '';
+                    while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                    if ($out !== "Ready!") {
+                        $communicationError = true;
+                    } else {
+                        $message = "scan environment " .
+                            "--name=" . $_POST['Target'] . " " .
+                            "--username=" . $row['Username'] . " " .
+                            "--password=" . $row['Password'] . " " .
+                            "--token=" . $row['Token'];
+                        $message .= "\r\n";
+                        socket_write($socket, $message, strlen($message));
+                        $out = '';
+                        while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                        if (strpos($out, 'SUCCESS') !== false) {
+                            $resultComponents = explode(': ', $out);
+                            auditLog(null, 'Started scan environment job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]);
+?>
+            <div class="alert alert-success alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                <strong>Success:</strong> Job <a href="job.html?jobId=<?php echo $resultComponents[2]; ?>">#<?php echo $resultComponents[2]; ?></a> was started successfully.
+            </div>
+<?php
+                        } else {
+?>
+            <div class="alert alert-danger">
+                <strong>Error:</strong> There was an error starting the scan job.
+            </div>
+<?php
+                        }
+                    }
+                }
+            }
+        }
+    }
     if ($result->num_rows == 1) {
 ?>
             <div class="alert alert-warning">
@@ -159,98 +234,102 @@
 <?php
     }
 ?>
-            <div class="panel panel-info action">
-                <!-- Default panel contents -->
-                <div class="panel-heading">Step 1) Select Action</div>
-                <div class="btn-group btn-group-justified" data-toggle="buttons">
-                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
-                           data-toggle="tooltip" data-placement="top" title="Scan for changes to target organization and check them into the respository." data-container="body">
-                        <input type="radio" class="btn btn-default" name="action" value="Scan">Scan</button>
-                    </label>
-                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
-                           data-toggle="tooltip" data-placement="top" title="Deploy all differences from origin to target organization. Scans and checks in changes for both origin and target prior to deployment." data-container="body">
-                        <input type="radio" class="btn btn-default" name="action" value="Deploy">Deploy</button>
-                    </label>
-                    <label class="btn btn-default" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
-                           data-toggle="tooltip" data-placement="top" title="Rebases the target organization. Scans and checks in changes for both production and target prior to rebase." data-container="body">
-                        <input type="radio" class="btn btn-default" name="action" value="Rebase">Rebase</button>
-                    </label>
+            <form method="POST" id="deployForm">
+                <div class="panel panel-info action">
+                    <!-- Default panel contents -->
+                    <div class="panel-heading">Step 1) Select Action</div>
+                    <div class="btn-group btn-group-justified" data-toggle="buttons">
+                        <label class="btn btn-default <?php if ($result->num_rows < 1) { echo 'disabled'; } ?>" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
+                               data-toggle="tooltip" data-placement="top" title="Scan for changes to target organization and check them into the respository." data-container="body">
+                            <input type="radio" class="btn btn-default" name="action" value="Scan">Scan</button>
+                        </label>
+                        <label class="btn btn-default <?php if ($result->num_rows < 2 || true) { echo 'disabled'; } ?>" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
+                               data-toggle="tooltip" data-placement="top" title="Deploy all differences from origin to target organization. Scans and checks in changes for both origin and target prior to deployment." data-container="body">
+                            <input type="radio" class="btn btn-default" name="action" value="Deploy">Deploy</button>
+                        </label>
+                        <label class="btn btn-default <?php if ($result->num_rows < 2 || true) { echo 'disabled'; } ?>" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
+                               data-toggle="tooltip" data-placement="top" title="Rebases the target organization. Scans and checks in changes for both production and target prior to rebase." data-container="body">
+                            <input type="radio" class="btn btn-default" name="action" value="Rebase">Rebase</button>
+                        </label>
+                    </div>
                 </div>
-            </div>
-            <div class="panel panel-info organizations">
-                <!-- Default panel contents -->
-                <div class="panel-heading">Step 2) Select Organization(s)</div>
-                <div class="btn-group btn-group-justified multiple">
-                    <div class="btn-group" style="width: 50%; display: inline-block;">
-                        <button type="button" class="btn btn-default dropdown-toggle disabled origin" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Origin <span class="caret"></span></button>
-                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
+                <div class="panel panel-info organizations">
+                    <!-- Default panel contents -->
+                    <div class="panel-heading">Step 2) Select Organization(s)</div>
+                    <div class="btn-group btn-group-justified multiple">
+                        <div class="btn-group" style="width: 50%; display: inline-block;">
+                            <button type="button" class="btn btn-default dropdown-toggle disabled origin" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Origin <span class="caret"></span></button>
+                            <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
 <?php
     $result->data_seek(0); // Return to the beginning of the set
     while ($row = $result->fetch_assoc()) {
 ?>
-                            <li data-organization="<?php echo $row['Name']; ?>" data-production="<?php echo $row['Production']; ?>"><a href="javascript:void(0)" onclick="originChanged(this)"><?php echo $row['Name']; ?></a></li>
+                                <li data-organization="<?php echo $row['Name']; ?>" data-production="<?php echo $row['Production']; ?>"><a href="javascript:void(0)" onclick="originChanged(this)"><?php echo $row['Name']; ?></a></li>
 <?php
     }
 ?>
-                        </ul>
-                    </div>
-                    <div class="btn-group" style="width: 50%; display: inline-block; margin-left: 0;">
-                        <button type="button" class="btn btn-default dropdown-toggle disabled target" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Target <span class="caret"></span></button>
-                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
+                            </ul>
+                            <input type="hidden" name="Origin" value="" />
+                        </div>
+                        <div class="btn-group" style="width: 50%; display: inline-block; margin-left: 0;">
+                            <button type="button" class="btn btn-default dropdown-toggle disabled target" data-toggle="dropdown" style="border-top-left-radius: 0; border-top-right-radius: 0;">Target <span class="caret"></span></button>
+                            <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
 <?php
     $result->data_seek(0); // Return to the beginning of the set
     while ($row = $result->fetch_assoc()) {
 ?>
-                            <li data-organization="<?php echo $row['Name']; ?>" data-production="<?php echo $row['Production']; ?>"><a href="javascript:void(0)" onclick="targetChanged(this)"><?php echo $row['Name']; ?></a></li>
+                                <li data-organization="<?php echo $row['Name']; ?>" data-production="<?php echo $row['Production']; ?>"><a href="javascript:void(0)" onclick="targetChanged(this)"><?php echo $row['Name']; ?></a></li>
 <?php
     }
 ?>
-                        </ul>
+                            </ul>
+                            <input type="hidden" name="Target" value="" />
+                        </div>
                     </div>
-                </div>
-                <div class="btn-group btn-group-justified single" style="display: none;">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-default dropdown-toggle disabled target" data-toggle="dropdown">Target <span class="caret"></span></button>
-                        <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
+                    <div class="btn-group btn-group-justified single" style="display: none;">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-default dropdown-toggle disabled target" data-toggle="dropdown">Target <span class="caret"></span></button>
+                            <ul class="dropdown-menu" role="menu" style="width: 100%; text-align: center;">
 <?php
     $result->data_seek(0); // Return to the beginning of the set
     while ($row = $result->fetch_assoc()) {
 ?>
-                            <li data-organization="<?php echo $row['Name']; ?>" data-production="<?php echo $row['Production']; ?>"><a href="javascript:void(0)" onclick="targetChanged(this)"><?php echo $row['Name']; ?></a></li>
+                                <li data-organization="<?php echo $row['Name']; ?>" data-production="<?php echo $row['Production']; ?>"><a href="javascript:void(0)" onclick="targetChanged(this)"><?php echo $row['Name']; ?></a></li>
 <?php
     }
 ?>
-                        </ul>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="panel panel-info time">
-                <!-- Default panel contents -->
-                <div class="panel-heading">Step 3) Select Time</div>
-                <div class="btn-group btn-group-justified" data-toggle="buttons">
-                    <label class="scheduleType btn btn-default active disabled" style="border-radius: 0;">
-                        <input type="radio" class="btn btn-default" checked  onchange="scheduleTypeChanged('Now')"><span>Now</span>
-                    </label>
-                    <label class="scheduleType btn btn-default disabled" style="border-radius: 0;">
-                        <input type="radio" class="btn btn-default" onchange="scheduleTypeChanged('Future')"><span>Future</span>
-                    </label>
-                </div>
-                <div class="input-group date">
-                    <span class="input-group-addon" style="border-top-left-radius: 0; border-top-right-radius: 0;">
-                        @
-                    </span>
-                    <input id="schedulePicker" disabled type="text" class="form-control" placeholder="Scheduled Date" style="border-top-left-radius: 0; border-top-right-radius: 0;">
-                </div>
-            </div>
-            <div class="panel panel-info go">
-                <!-- Default panel contents -->
-                <div class="panel-heading">Step 4) Go!</div>
-                <div class="btn-group btn-group-justified">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-default disabled" style="border-top-left-radius: 0; border-top-right-radius: 0;">Make it so! <span class="fa fa-caret-right"></span></button>
+                <div class="panel panel-info time">
+                    <!-- Default panel contents -->
+                    <div class="panel-heading">Step 3) Select Time</div>
+                    <div class="btn-group btn-group-justified" data-toggle="buttons">
+                        <label class="scheduleType now btn btn-default disabled" style="border-radius: 0;">
+                            <input type="radio" name="Schedule" value="Now" class="btn btn-default" checked  onchange="scheduleTypeChanged('Now')"><span>Now</span>
+                        </label>
+                        <label class="scheduleType future btn btn-default disabled" style="border-radius: 0;">
+                            <input type="radio" name="Schedule" value="Future" class="btn btn-default" onchange="scheduleTypeChanged('Future')"><span>Future</span>
+                        </label>
+                    </div>
+                    <div class="input-group date">
+                        <span class="input-group-addon" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+                            @
+                        </span>
+                        <input id="schedulePicker" disabled name="Date" type="text" class="form-control" placeholder="Scheduled Date" style="border-top-left-radius: 0; border-top-right-radius: 0;">
                     </div>
                 </div>
-            </div>
+                <div class="panel panel-info go">
+                    <!-- Default panel contents -->
+                    <div class="panel-heading">Step 4) Go!</div>
+                    <div class="btn-group btn-group-justified">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-default submit disabled" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="submitForm()">Make it so! <span class="fa fa-caret-right"></span></button>
+                        </div>
+                    </div>
+                </div>
+            </form>
         </div>
         <!-- /#page-wrapper -->
     </div>

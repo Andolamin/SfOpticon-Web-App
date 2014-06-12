@@ -41,6 +41,7 @@ function handleSocketData(socket) {
             new controller().handleCommand(socket, args);
         } catch(err) {
             console.warn(err.message);
+            console.warn(err.stack);
             console.warn('(' + socket.key + '): Attempted to execute a command with no controller (' + controllerName + ')');
             socket.write('ERROR: Unable to find controller for received command (' + controllerName + ')\r\n');
             socket.destroy();

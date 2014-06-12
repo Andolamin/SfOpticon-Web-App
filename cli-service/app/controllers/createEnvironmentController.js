@@ -3,11 +3,12 @@
  *
  * Created by Alan on 5/27/2014.
  */
-var HashMap = require('hashmap').HashMap;
-var mysql = require('mysql');
+var CommandController = require('./commandController.js');
+var merge = require('merge');
 
 function CreateEnvironmentController() {
-    this.paramDefinition = {
+    CommandController.apply(this, Array.prototype.slice.call(arguments));
+    this.paramDefinition = merge(this.paramDefinition, {
         name: {
             required: true,
             type: 'string',
@@ -52,9 +53,9 @@ function CreateEnvironmentController() {
             type: 'string',
             description: 'The current user\'s production security token.'
         }
-    };
+    });
 
-    this.createEnvironentProgressDef = [
+    this.progressDef = [
         {
             trigger: 'Host configured to',
             progress: 5,
@@ -110,158 +111,73 @@ function CreateEnvironmentController() {
             always: true
         }
     ];
-    this.lastProgress = -1;
-
-    this.socket = null;
-    this.params = null;
-    this.connection = null;
-    this.jobId = null;
-}
-
-CreateEnvironmentController.prototype.handleCommand = function handleCommand(socket, args) {
-    this.socket = socket;
-    this.params = require('../libs/parameterHelper.js').parametersFromArguments(args.slice(2));
-    console.log('(' + this.socket.key + '): Creating environment from command: ' + this.params);
-
-    // Create job record in DB
-    var settings = require('../settings.js');
-    this.connection = mysql.createConnection({
-        host     : settings.mysqlHost,
-        user     : settings.mysqlUsername,
-        password : settings.mysqlPassword
-    });
-    this.connection.connect();
-    this.connection.query('USE ' + settings.mysqlDB);
-    this.connection.query("INSERT INTO `Job` (`Status`, `Progress`, `StartTime`, `Type`) VALUES ('Received', '0.00', NOW(6), 'Create Environment');",
-        function (err, result) {
-            if (err) {
-                console.log('(' + this.socket.key + '): MySQL error: ' + err.message);
-                this.socket.write('ERROR: Error starting job');
-//                this.socket.destroy();
-                this.connection.end();
-            } else {
-                this.jobId = result.insertId;
-                this.startOrScheduleJob();
-            }
-        }.bind(this));
+    this.commandType = 'Create Environment';
 };
 
-CreateEnvironmentController.prototype.startOrScheduleJob = function startOrScheduleJob() {
-    var i;
-//    this.socket.write('Job ID: ' + this.jobId + '\r\n');
-//    this.socket.destroy();
-    console.log('(' + this.socket.key + '): Job ID: ' + this.jobId);
-    this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Received', NOW(6))",
-        function(err) {
-            if (err) {
-                console.log('(' + this.socket.key + '): Error inserting log');
-            }
+CreateEnvironmentController.prototype = new CommandController();
+
+CreateEnvironmentController.prototype.handleJob = function handleJob() {
+    // Process the job
+    var spawn = require('child_process').spawn;
+    var sfArgs = [
+        'bin/environment.rb',
+        'create',
+        '--name',
+        this.params.get('name'),
+        '--host',
+        this.params.get('location'),
+        '--username',
+        this.params.get('username'),
+        '--password',
+        this.params.get('password'),
+        '--securitytoken',
+        this.params.get('token')
+    ];
+    if (this.params.has('production') && this.params.get('production') == 'true') {
+        sfArgs.push('--production');
+    }
+
+    var commandString = 'ruby';
+    for (var i = 0; i < sfArgs.length; i++) {
+        commandString += ' ' + sfArgs[i];
+    }
+    console.log(commandString);
+
+    var child = spawn('ruby',
+        sfArgs,
+        {
+            cwd: '/sfopticon'
         });
-    // Verify that the parameters satisfy the definition
-    var passesValidation = require('../libs/parameterHelper.js').argumentsValid(this.params, this.paramDefinition);
+    child.stdout.on('data', function(data) {
+        this.handleSfOpticonData(data);
+        console.log('stdout: ' + data);
+    }.bind(this));
+    child.stderr.on('data', function(data) {
+        this.handleSfOpticonData(data);
+        console.log('stderr: ' + data);
+    }.bind(this));
 
-    console.log('(' + this.socket.key + '): Arguments are ' + (passesValidation ? 'valid' : 'invalid'));
-    if (!passesValidation) {
-        // Parameters don't satisfy the definition. Output them and exit.
-        var documentation = require('../libs/parameterHelper.js').argumentDocumentation(this.paramDefinition);
-//        this.socket.write('create environment ' + documentation[0] + '\r\n');
-//        for (i = 1; i < documentation.length; i++) {
-//            this.socket.write(documentation[i] + '\r\n');
-//        }
-        this.socket.write('ERROR: Arguments were invalid. See the returned documentation for command structure.\n');
-//        this.socket.destroy();
-
-        // Update job record with error
-        this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Invalid Parameters', NOW(6));");
-        this.connection.query("UPDATE `Job` SET `Progress` = 100, `Status` = 'Failed: Invalid Parameters' WHERE `ID` = " + this.jobId);
-        this.connection.end();
-    } else {
-        this.socket.write('SUCCESS: Job received successfully: ' + this.jobId + '\n');
-//        this.socket.destroy();
-
-        // Process the job
-        var spawn = require('child_process').spawn;
-        var sfArgs = [
-            'bin/environment.rb',
-            'create',
-            '--name',
-            this.params.get('name'),
-            '--host',
-            this.params.get('location'),
-            '--username',
-            this.params.get('username'),
-            '--password',
-            this.params.get('password'),
-            '--securitytoken',
-            this.params.get('token')
-        ];
-        if (this.params.has('production') && this.params.get('production') == 'true') {
-            sfArgs.push('--production');
-        }
-
-        var commandString = 'ruby';
-        for (var i = 0; i < sfArgs.length; i++) {
-            commandString += ' ' + sfArgs[i];
-        }
-        console.log(commandString);
-
-        var child = spawn('ruby',
-            sfArgs,
-            {
-                cwd: '/sfopticon'
-            });
-        child.stdout.on('data', function(data) {
-            this.handleSfOpticonData(data);
-            console.log('stdout: ' + data);
-        }.bind(this));
-        child.stderr.on('data', function(data) {
-            this.handleSfOpticonData(data);
-            console.log('stderr: ' + data);
-        }.bind(this));
-
-        child.on('exit', function() {
-            if (this.lastProgress < this.createEnvironentProgressDef.length - 1) {
-                this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Job Failed', NOW(6));");
-                this.connection.query("UPDATE `Job` SET `Progress` = 100.00, `Status` = 'Failed: Job Failed' WHERE `ID` = " + this.jobId);
-            } else {
-                this.connection.query("INSERT INTO `Environment` (`Name`, `Production`, `Location`) VALUES ('" + this.params.get('name') + "', " + (this.params.has('production') ? '1' : '0') + ", '" + this.params.get('location') + "')",
+    child.on('exit', function() {
+        if (this.lastProgress < this.progressDef.length - 1) {
+            this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Job Failed', NOW(6));");
+            this.connection.query("UPDATE `Job` SET `Progress` = 100.00, `Status` = 'Failed: Job Failed' WHERE `ID` = " + this.jobId);
+        } else {
+            this.connection.query("INSERT INTO `Environment` (`Name`, `Production`, `Location`) VALUES ('" + this.params.get('name') + "', " + (this.params.has('production') ? '1' : '0') + ", '" + this.params.get('location') + "')",
                 function(err, result) {
                     console.log(err);
                     var environmentId = result.insertId;
                     this.connection.query("INSERT INTO `EnvironmentJob` (`EnvironmentID`, `JobID`) VALUES (" + environmentId + ", " + this.jobId + ")")
                     // Update environment credentials
                     this.connection.query("UPDATE `EnvironmentCredential` SET `Username`='" + this.params.get('username') + "'," +
-                                          "`Password`=AES_ENCRYPT('" + this.params.get('password') + "', '" + this.params.get('userToken') + "'), " +
-                                          "`Token`=AES_ENCRYPT('" + this.params.get('token') + "', '" + this.params.get('userToken') + "') " +
-                                          "WHERE `EnvironmentID` = " + environmentId + " AND " +
-                                          "`UserID`=(SELECT `ID` FROM `User` WHERE `Username` = '" + this.params.get('userAuthId') + "' LIMIT 1)");
+                        "`Password`=AES_ENCRYPT('" + this.params.get('password') + "', '" + this.params.get('userToken') + "'), " +
+                        "`Token`=AES_ENCRYPT('" + this.params.get('token') + "', '" + this.params.get('userToken') + "') " +
+                        "WHERE `EnvironmentID` = " + environmentId + " AND " +
+                        "`UserID`=(SELECT `ID` FROM `User` WHERE `Username` = '" + this.params.get('userAuthId') + "' LIMIT 1)");
                 }.bind(this));
-            }
-            var ServiceCleaner = require('../libs/serviceCleaner.js');
-            new ServiceCleaner().cleanupEnvironment(this.params.get('name'));
-        }.bind(this));
-    }
-};
-
-CreateEnvironmentController.prototype.handleSfOpticonData = function handleSfOpticonData(data) {
-    var progress = this.lastProgress + 1;
-    if (progress >= this.createEnvironentProgressDef.length) {
-        return;
-    }
-    while (true) {
-        if (data.toString().indexOf(this.createEnvironentProgressDef[progress].trigger) != -1) {
-            // Found our trigger
-            this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", '" + this.createEnvironentProgressDef[progress].message + "', NOW(6));");
-            this.connection.query("UPDATE `Job` SET `Progress` = " + this.createEnvironentProgressDef[progress].progress + ", `Status` = '" + this.createEnvironentProgressDef[progress].message + "' WHERE `ID` = " + this.jobId);
-            this.lastProgress = progress;
-            break;
-        } else if (this.createEnvironentProgressDef[progress].always == true) {
-            // Can't continue until we satisfy this trigger
-            break;
         }
-        // Didn't satisfy the trigger but it wasn't required, so skip it
-        progress++;
-    }
+        var CredentialsHelper = require('../libs/credentialsHelper.js');
+        new CredentialsHelper().cleanupEnvironment(this.params.get('name'));
+    }.bind(this));
 };
 
 module.exports = CreateEnvironmentController;
