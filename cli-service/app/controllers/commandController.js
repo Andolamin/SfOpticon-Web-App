@@ -91,14 +91,14 @@ CommandController.prototype.handleSfOpticonData = function handleSfOpticonData(d
     for (var i = 0; i < lines.length; i++) {
         var progress = this.lastProgress + 1;
         while (progress < this.progressDef.length) {
-            console.log('Checking "' + lines[i] + '" for "' + this.progressDef[progress].trigger + '"');
+            // console.log('Checking "' + lines[i] + '" for "' + this.progressDef[progress].trigger + '"');
             if (lines[i].indexOf(this.progressDef[progress].trigger) != -1) {
-                console.log('Found trigger');
+                // console.log('Found trigger');
                 // Found our trigger
                 this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", '" + this.progressDef[progress].message + "', NOW(6));");
                 this.connection.query("UPDATE `Job` SET `Progress` = " + this.progressDef[progress].progress + ", `Status` = '" + this.progressDef[progress].message + "' WHERE `ID` = " + this.jobId);
                 this.lastProgress = progress;
-                console.log('New progress: ' + this.lastProgress);
+                // console.log('New progress: ' + this.lastProgress);
                 break;
             } else if (this.progressDef[progress].always == true) {
                 // Can't continue until we satisfy this trigger
