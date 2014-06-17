@@ -7,7 +7,28 @@
 	<head>
 		<title>Login</title>
 		<link rel="stylesheet" type="text/css" href="css/login.css" />
+		<script type="text/javascript" src="js/jquery-1.10.2.min.js"></script>
+		<link rel="stylesheet" type="text/css" href="font-awesome/css/font-awesome.min.css" />
 		<meta name="viewport" content="width=device-width, user-scalable=no"/>
+		<script type="text/javascript">
+            function revealDown() {
+                $(this).siblings('input').attr('type', 'text');
+            };
+
+            function revealUp() {
+                $(this).siblings('input').attr('type', 'password');
+            };
+
+            $(function() {
+                $('.reveal').bind("touchstart", function (e) { revealDown.call(this, e); e.stopPropagation(); e.preventDefault(); });
+                $('.reveal').bind("mousedown", function (e) { revealDown.call(this, e); });
+            });
+
+            $(function() {
+                $('.reveal').bind("touchend", function (e) { revealUp.call(this, e); e.stopPropagation(); e.preventDefault(); });
+                $('.reveal').bind("mouseup", function (e) { revealUp.call(this, e); });
+            });
+        </script>
 	</head>
 
 	<body>
@@ -54,7 +75,7 @@
 						}
 					?>
 				</label>
-				<input type="text" name="username" id="username" <?php if (isset($_POST['username'])) { echo ('value="'.$_POST['username'].'"'); }?> />
+				<input type="email" name="username" id="username" <?php if (isset($_POST['username'])) { echo ('value="'.$_POST['username'].'"'); }?> />
 
 				<label>Password
 					<?php
@@ -65,7 +86,10 @@
 						}
 					?>
 				</label>
+				<span style="position: relative">
 				<input type="password" name="password" id="password" />
+				<span class="reveal" style="position: absolute; right: 22px; z-index: 2; font-size: 17px; top: 0px;"><i class="fa fa-eye"></i></span>
+				</span>
 
 				<label>Security Token
 					<?php

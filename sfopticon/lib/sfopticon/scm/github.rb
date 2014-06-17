@@ -56,7 +56,7 @@ module SfOpticon::Scm::Github
   ##
   # Switches us to a branch
   def checkout(branch)
-    git.checkout(branch)
+    git.checkout(branch, :force => true)
   end
 
   ##

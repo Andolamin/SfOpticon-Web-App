@@ -69,6 +69,25 @@
             width: 75%;
         }
     </style>
+    <script type="text/javascript">
+        function revealDown() {
+            $(this).siblings('input').attr('type', 'text');
+        };
+
+        function revealUp() {
+            $(this).siblings('input').attr('type', 'password');
+        };
+
+        $(function() {
+            $('.reveal').bind("touchstart", function (e) { revealDown.call(this, e); e.stopPropagation(); e.preventDefault(); });
+            $('.reveal').bind("mousedown", function (e) { revealDown.call(this, e); });
+        });
+
+        $(function() {
+            $('.reveal').bind("touchend", function (e) { revealUp.call(this, e); e.stopPropagation(); e.preventDefault(); });
+            $('.reveal').bind("mouseup", function (e) { revealUp.call(this, e); });
+        });
+    </script>
 </head>
 <body>
     <div id="wrapper">
@@ -157,6 +176,7 @@
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 100px;">Password: </span>
                             <input type="password" class="form-control" name="GitPassword" value="<?php echo $row['GitPassword']; ?>">
+                            <span class="reveal" style="position: absolute; right: 6px; z-index: 2; font-size: 20px; top: 3px;"><i class="fa fa-eye"></i></span>
                         </div>
                         <input id="saveButton" type="Submit" class="btn btn-success" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;" value="Save" />
                     </div>

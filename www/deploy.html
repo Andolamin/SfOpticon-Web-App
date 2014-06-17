@@ -82,6 +82,14 @@
 
         function actionChanged() {
             setTimeout(function() {
+                $('button.origin').html('Origin <span class="caret"></span>');
+                $('button.target').html('Target <span class="caret"></span>');
+                $('.scheduleType').addClass('disabled');
+                $('.scheduleType').removeClass('active');
+                $('input[name="Origin"]').attr('value', '');
+                $('input[name="Target"]').attr('value', '');
+                $('.submit').addClass('disabled');
+
                 var action = $('input[name="action"]:checked').val();
                 switch (action) {
                     case 'Scan':
@@ -89,6 +97,7 @@
                         $('.single button').removeClass('disabled');
                         $('.multiple').css('display', 'none');
                         $('.multiple button').addClass('disabled');
+                        $('.single button.target + ul > li[data-production="1"]').css('display', 'list-item');
                         break;
                     case 'Deploy':
                         $('.single').css('display', 'none');
@@ -102,15 +111,10 @@
                         $('.single button').removeClass('disabled');
                         $('.multiple').css('display', 'none');
                         $('.multiple button').addClass('disabled');
+                        $('.single button.target + ul > li[data-production="1"]').css('display', 'none');
+                        $('input[name="Origin"]').attr('value', $('.single button.target + ul > li[data-production="1"] a').html());
                         break;
                 }
-                $('button.origin').html('Origin <span class="caret"></span>');
-                $('button.target').html('Target <span class="caret"></span>');
-                $('.scheduleType').addClass('disabled');
-                $('.scheduleType').removeClass('active');
-                $('input[name="Origin"]').attr('value', '');
-                $('input[name="Target"]').attr('value', '');
-                $('.submit').addClass('disabled');
             }, 10);
         }
 
@@ -156,7 +160,7 @@
         <div id="page-wrapper">
             <div class="alert alert-info alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>WIP:</strong> Rebase functionality is not currently available. Jobs must be run immediately, schedule functionality is not complete.
+                <strong>WIP:</strong> Jobs must be run immediately, schedule functionality is not complete.
             </div>
 <?php
     if (isset($_POST['action']) && $_POST['action'] == 'Scan') {
@@ -199,7 +203,7 @@
                             "--token=" . $row['Token'] . " " .
                             "--gitUsername=" . $git['GitUsername'] . " " .
                             "--gitPassword=" . $git['GitPassword'] . " " .
-                            "--gitFullName=" . $git['GitName'] . " " .
+                            "--gitFullName=\"" . $git['GitName'] . "\" " .
                             "--gitEmail=" . $git['GitEmail'];
                         $message .= "\r\n";
                         socket_write($socket, $message, strlen($message));
@@ -277,7 +281,7 @@
                             "--targetToken=" . $targetRow['Token'] . " " .
                             "--gitUsername=" . $git['GitUsername'] . " " .
                             "--gitPassword=" . $git['GitPassword'] . " " .
-                            "--gitFullName=" . $git['GitName'] . " " .
+                            "--gitFullName=\"" . $git['GitName'] . "\" " .
                             "--gitEmail=" . $git['GitEmail'];
                         $message .= "\r\n";
                         socket_write($socket, $message, strlen($message));
@@ -296,6 +300,84 @@
 ?>
             <div class="alert alert-danger">
                 <strong>Error:</strong> There was an error starting the deploy job.
+            </div>
+<?php
+                        }
+                    }
+                }
+            }
+        }
+    } else if (isset($_POST['action']) && $_POST['action'] == 'Rebase') {
+        $dbStr = "SELECT `Username`, " .
+                 "AES_DECRYPT(`Password`, '" . $_SESSION['sfToken'] . "') as `Password`, " .
+                 "AES_DECRYPT(`Token`, '" . $_SESSION['sfToken'] . "') as `Token` " .
+                 "FROM `EnvironmentCredential` WHERE " .
+                 "`EnvironmentID` = (SELECT `ID` FROM `Environment` WHERE `Production` = 1) AND " .
+                 "`UserID` = (SELECT `ID` FROM `User` WHERE `Username` = '" . $userInfo->userName . "')";
+        $originCredentialResult = $db_con->query($dbStr);
+        $dbStr = "SELECT `Username`, " .
+                 "AES_DECRYPT(`Password`, '" . $_SESSION['sfToken'] . "') as `Password`, " .
+                 "AES_DECRYPT(`Token`, '" . $_SESSION['sfToken'] . "') as `Token` " .
+                 "FROM `EnvironmentCredential` WHERE " .
+                 "`EnvironmentID` = (SELECT `ID` FROM `Environment` WHERE `Name` = '" . $_POST['Target'] . "') AND " .
+                 "`UserID` = (SELECT `ID` FROM `User` WHERE `Username` = '" . $userInfo->userName . "')";
+        $targetCredentialResult = $db_con->query($dbStr);
+        $gitResult = $db_con->query("SELECT `GitName`, `GitEmail`, `GitUsername`, AES_DECRYPT(`GitPassword`, '" . $_SESSION['sfToken'] . "') as `GitPassword` FROM `User` WHERE `Username` = '" . $userInfo->userName . "'");
+        if ($originCredentialResult->num_rows == 0 || $targetCredentialResult->num_rows == 0 || $gitResult->num_rows == 0) {
+?>
+            <div class="alert alert-danger">
+                <strong>Error:</strong> There was an error starting the rebase job.
+            </div>
+<?php
+        } else {
+            $originRow = $originCredentialResult->fetch_assoc();
+            $targetRow = $targetCredentialResult->fetch_assoc();
+            $git = $gitResult->fetch_assoc();
+            $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+            socket_set_block($socket);
+            $communicationError = false;
+            if ($socket === false) {
+                $communicationError = true;
+            } else {
+                $socketResult = socket_connect($socket, "localhost", 43442);
+                if ($socketResult === false) {
+                    $communicationError = true;
+                } else {
+                    $out = '';
+                    while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                    if ($out !== "Ready!") {
+                        $communicationError = true;
+                    } else {
+                        $message = "rebase environment " .
+                            "--origin=" . $_POST['Origin'] . " " .
+                            "--originUsername=" . $originRow['Username'] . " " .
+                            "--originPassword=" . $originRow['Password'] . " " .
+                            "--originToken=" . $originRow['Token'] . " " .
+                            "--target=" . $_POST['Target'] . " " .
+                            "--targetUsername=" . $targetRow['Username'] . " " .
+                            "--targetPassword=" . $targetRow['Password'] . " " .
+                            "--targetToken=" . $targetRow['Token'] . " " .
+                            "--gitUsername=" . $git['GitUsername'] . " " .
+                            "--gitPassword=" . $git['GitPassword'] . " " .
+                            "--gitFullName=\"" . $git['GitName'] . "\" " .
+                            "--gitEmail=" . $git['GitEmail'];
+                        $message .= "\r\n";
+                        socket_write($socket, $message, strlen($message));
+                        $out = '';
+                        while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                        if (strpos($out, 'SUCCESS') !== false) {
+                            $resultComponents = explode(': ', $out);
+                            auditLog(null, 'Started deploy job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]);
+?>
+            <div class="alert alert-success alert-dismissable">
+                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+                <strong>Success:</strong> Job <a href="job.html?jobId=<?php echo $resultComponents[2]; ?>">#<?php echo $resultComponents[2]; ?></a> was started successfully.
+            </div>
+<?php
+                        } else {
+?>
+            <div class="alert alert-danger">
+                <strong>Error:</strong> There was an error starting the rebase job.
             </div>
 <?php
                         }
@@ -339,7 +421,7 @@
                                data-toggle="tooltip" data-placement="top" title="Deploy all differences from origin to target organization. Scans and checks in changes for both origin and target prior to deployment." data-container="body">
                             <input type="radio" class="btn btn-default" name="action" value="Deploy">Deploy</button>
                         </label>
-                        <label class="btn btn-default <?php if ($result->num_rows < 2 || !$gitConfigured || true) { echo 'disabled'; } ?>" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
+                        <label class="btn btn-default <?php if ($result->num_rows < 2 || !$gitConfigured) { echo 'disabled'; } ?>" style="border-top-left-radius: 0; border-top-right-radius: 0;" onclick="actionChanged()"
                                data-toggle="tooltip" data-placement="top" title="Rebases the target organization. Scans and checks in changes for both production and target prior to rebase." data-container="body">
                             <input type="radio" class="btn btn-default" name="action" value="Rebase">Rebase</button>
                         </label>

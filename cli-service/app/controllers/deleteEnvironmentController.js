@@ -100,7 +100,7 @@ DeleteEnvironmentController.prototype.handleJob = function handleJob() {
             this.connection.query('SET FOREIGN_KEY_CHECKS = 1;');
             if (this.params.get('production') == 'true') {
                 // Use the GitHub API to delete the repository if the org is production
-                // TODO: Handle if someone tries to delete a repository that is owned by another account
+                // TODO: Handle if someone tries to delete a repository that is owned by another account or organization
                 var github = new GitHubApi({
                     // required
                     version: "3.0.0",
@@ -114,7 +114,7 @@ DeleteEnvironmentController.prototype.handleJob = function handleJob() {
                 });
                 github.repos.delete({
                     'user': this.params.get('gitUsername'),
-                    'repo': 'ps-salesforce'
+                    'repo': this.params.get('name')
                 }, function(err) {
                     console.log(err);
                 });
