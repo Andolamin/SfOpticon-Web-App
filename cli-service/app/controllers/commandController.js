@@ -9,6 +9,26 @@ function CommandController() {
             required: false,
             type: 'datetime',
             description: 'The scheduled date/time to run'
+        },
+        gitUsername: {
+            required: true,
+            type: 'string',
+            description: 'Github Username'
+        },
+        gitPassword: {
+            required: true,
+            type: 'string',
+            description: 'Github password'
+        },
+        gitFullName: {
+            required: true,
+            type: 'string',
+            description: 'Git Fullname'
+        },
+        gitEmail: {
+            required: true,
+            type: 'string',
+            description: 'Git Email'
         }
     };
     this.progressDef = [];

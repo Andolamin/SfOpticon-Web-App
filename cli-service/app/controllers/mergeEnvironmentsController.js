@@ -114,10 +114,17 @@ function MergeEnvironmentsController() {
 MergeEnvironmentsController.prototype = new CommandController();
 
 MergeEnvironmentsController.prototype.handleJob = function handleJob() {
+    // Set up git and github
+    var ConfigurationHelper = require('../libs/configHelper.js');
+    new ConfigurationHelper().setGitConfig(this.params.get('gitFullName'), this.params.get('gitEmail'));
+    new ConfigurationHelper().setGithubCredentials(this.params.get('gitUsername'), this.params.get('gitPassword'));
+
+    // Set up org credentials
     var CredentialsHelper = require('../libs/credentialsHelper.js');
     new CredentialsHelper().setCredentials(this.params.get('origin'), this.params.get('originUsername'), this.params.get('originPassword'), this.params.get('originToken'));
     new CredentialsHelper().setCredentials(this.params.get('target'), this.params.get('targetUsername'), this.params.get('targetPassword'), this.params.get('targetToken'));
 
+    // Attach the job to the orgs
     this.connection.query("INSERT INTO `EnvironmentJob` (`EnvironmentID`, `JobID`) VALUES ((SELECT `ID` FROM `Environment` WHERE `Name` = '" + this.params.get('origin') + "'), " + this.jobId + ")");
     this.connection.query("INSERT INTO `EnvironmentJob` (`EnvironmentID`, `JobID`) VALUES ((SELECT `ID` FROM `Environment` WHERE `Name` = '" + this.params.get('target') + "'), " + this.jobId + ")");
 
@@ -159,9 +166,15 @@ MergeEnvironmentsController.prototype.handleJob = function handleJob() {
             this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Job Failed', NOW(6));");
             this.connection.query("UPDATE `Job` SET `Progress` = 100.00, `Status` = 'Failed: Job Failed' WHERE `ID` = " + this.jobId);
         }
+
+        // Clean up orgs' credentials from SfOpticon's unencrypted database
         var CredentialsHelper = require('../libs/credentialsHelper.js');
         new CredentialsHelper().cleanupEnvironment(this.params.get('origin'));
         new CredentialsHelper().cleanupEnvironment(this.params.get('target'));
+
+        // Clean up git settings from unencrypted storage
+        new ConfigurationHelper().clearGitConfig();
+        new ConfigurationHelper().clearGithubCredentials();
     }.bind(this));
 };
 

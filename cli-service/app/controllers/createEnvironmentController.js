@@ -8,6 +8,7 @@ var merge = require('merge');
 
 function CreateEnvironmentController() {
     CommandController.apply(this, Array.prototype.slice.call(arguments));
+    console.log(this.paramDefinition);
     this.paramDefinition = merge(this.paramDefinition, {
         name: {
             required: true,
@@ -54,6 +55,7 @@ function CreateEnvironmentController() {
             description: 'The current user\'s production security token.'
         }
     });
+    console.log(this.paramDefinition);
 
     this.progressDef = [
         {
@@ -117,6 +119,12 @@ function CreateEnvironmentController() {
 CreateEnvironmentController.prototype = new CommandController();
 
 CreateEnvironmentController.prototype.handleJob = function handleJob() {
+    // Set up git and github
+    console.log(this.params);
+    var ConfigurationHelper = require('../libs/configHelper.js');
+    new ConfigurationHelper().setGitConfig(this.params.get('gitFullName'), this.params.get('gitEmail'));
+    new ConfigurationHelper().setGithubCredentials(this.params.get('gitUsername'), this.params.get('gitPassword'));
+
     // Process the job
     var spawn = require('child_process').spawn;
     var sfArgs = [
@@ -175,8 +183,13 @@ CreateEnvironmentController.prototype.handleJob = function handleJob() {
                         "`UserID`=(SELECT `ID` FROM `User` WHERE `Username` = '" + this.params.get('userAuthId') + "' LIMIT 1)");
                 }.bind(this));
         }
+        // Clean up org credentials from SfOpticon's unencrypted database
         var CredentialsHelper = require('../libs/credentialsHelper.js');
         new CredentialsHelper().cleanupEnvironment(this.params.get('name'));
+
+        // Clean up git settings from unencrypted storage
+        new ConfigurationHelper().clearGitConfig();
+        new ConfigurationHelper().clearGithubCredentials();
     }.bind(this));
 };
 

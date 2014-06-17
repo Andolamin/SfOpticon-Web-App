@@ -8,6 +8,31 @@
 		)
 	);
 
+	function gitConfigured($user = null) {
+        global $userInfo;
+        try {
+            $db_con = connectDBi();
+        } catch (Exception $e) {
+            if ($e->getMessage() == "100") {
+                $error = mysql_error();
+                die("Error connecting to the database");
+            } else if ($e->getMessage() == "101") {
+                $error = mysql_error();
+                die("Error selecting the database");
+            }
+        }
+
+        $user = ($user ? $user : ($userInfo ? $userInfo->userName : "Unknown"));
+        $result = $db_con->query("CALL gitConfigured('" . $user . "')");
+        $setUp = false;
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $setUp = $row['gitConfigured'] == 1;
+        }
+        $db_con->close();
+        return $setUp;
+	}
+
     function auditLog($user, $action) {
         global $userInfo;
         try {

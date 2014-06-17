@@ -42,67 +42,92 @@
             </div>
 <?php
     if (isset($_POST['action']) && $_POST['action'] == 'add') {
-        $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
-        socket_set_block($socket);
-        $communicationError = false;
-        if ($socket === false) {
-            $communicationError = true;
-        } else {
-            $result = socket_connect($socket, "localhost", 43442);
-            if ($result === false) {
-                $communicationError = true;
-            } else {
-                $out = '';
-                while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
-                if ($out !== "Ready!") {
-                    $communicationError = true;
-                } else {
-                    $message = "create environment " .
-                        "--name="       . $_POST['name']          . " " .
-                        "--location="   . $_POST['location']      . " " .
-                        "--username="   . $_POST['username']      . " " .
-                        "--password="   . $_POST['password']      . " " .
-                        "--token="      . $_POST['token']         . " " .
-                        "--userAuthId=" . $_SESSION['sfUsername'] . " " .
-                        "--userToken="  . $_SESSION['sfToken']    . " ";
-                    if (isset($_POST['production']) && $_POST['production'] == 'true') {
-                        $message .= " --production=true";
-                    }
-                    $message .= "\r\n";
-                    socket_write($socket, $message, strlen($message));
-                    $out = '';
-                    while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
-                    if (strpos($out, 'SUCCESS') !== false) {
-                        $resultComponents = explode(': ', $out);
-                        auditLog(null, 'Started create environment job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]);
-?>
-            <div class="alert alert-success">
-                <strong>Success:</strong> Job <a href="job.html?jobId=<?php echo $resultComponents[2]; ?>">#<?php echo $resultComponents[2]; ?></a> was started successfully.
-            </div>
-            <script type="text/javascript">
-                $(function() {
-                    setTimeout(function() {
-                        window.location.href = '/job.html?jobId=<?php echo $resultComponents[2]; ?>';
-                    }, 2000);
-                })
-            </script>
-<?php
-                    } else {
+        try {
+            $db_con = connectDBi();
+        } catch (Exception $e) {
+            if ($e->getMessage() == "100") {
+                $error = mysql_error();
+                die("Error connecting to the database");
+            } else if ($e->getMessage() == "101") {
+                $error = mysql_error();
+                die("Error selecting the database");
+            }
+        }
+        $gitResult = $db_con->query("SELECT `GitName`, `GitEmail`, `GitUsername`, AES_DECRYPT(`GitPassword`, '" . $_SESSION['sfToken'] . "') as `GitPassword` FROM `User` WHERE `Username` = '" . $userInfo->userName . "'");
+        if ($gitResult->num_rows == 0) {
 ?>
             <div class="alert alert-danger">
                 <strong>Error:</strong> There was an error creating the job.
             </div>
-            <?php
+<?php
+        } else {
+            $git = $gitResult->fetch_assoc();
+            $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+            socket_set_block($socket);
+            $communicationError = false;
+            if ($socket === false) {
+                $communicationError = true;
+            } else {
+                $result = socket_connect($socket, "localhost", 43442);
+                if ($result === false) {
+                    $communicationError = true;
+                } else {
+                    $out = '';
+                    while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                    if ($out !== "Ready!") {
+                        $communicationError = true;
+                    } else {
+                        $message = "create environment " .
+                            "--name="        . $_POST['name']          . " " .
+                            "--location="    . $_POST['location']      . " " .
+                            "--username="    . $_POST['username']      . " " .
+                            "--password="    . $_POST['password']      . " " .
+                            "--token="       . $_POST['token']         . " " .
+                            "--userAuthId="  . $_SESSION['sfUsername'] . " " .
+                            "--userToken="   . $_SESSION['sfToken']    . " " .
+                            "--gitUsername=" . $git['GitUsername']     . " " .
+                            "--gitPassword=" . $git['GitPassword']     . " " .
+                            "--gitFullName=" . $git['GitName']         . " " .
+                            "--gitEmail="    . $git['GitEmail']        . " ";
+                        if (isset($_POST['production']) && $_POST['production'] == 'true') {
+                            $message .= " --production=true";
+                        }
+                        $message .= "\r\n";
+                        socket_write($socket, $message, strlen($message));
+                        $out = '';
+                        while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
+                        if (strpos($out, 'SUCCESS') !== false) {
+                            $resultComponents = explode(': ', $out);
+                            auditLog(null, 'Started create environment job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]);
+?>
+                <div class="alert alert-success">
+                    <strong>Success:</strong> Job <a href="job.html?jobId=<?php echo $resultComponents[2]; ?>">#<?php echo $resultComponents[2]; ?></a> was started successfully.
+                </div>
+                <script type="text/javascript">
+                    $(function() {
+                        setTimeout(function() {
+                            window.location.href = '/job.html?jobId=<?php echo $resultComponents[2]; ?>';
+                        }, 2000);
+                    })
+                </script>
+<?php
+                        } else {
+?>
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> There was an error creating the job.
+                </div>
+<?php
+                        }
                     }
                 }
             }
-        }
-        if ($communicationError) {
+            if ($communicationError) {
 ?>
-            <div class="alert alert-danger">
-                <strong>Error:</strong> Could not connect to SfOpticon service.
-            </div>
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> Could not connect to SfOpticon service.
+                </div>
 <?php
+            }
         }
     } else if (isset($_POST['action']) && $_POST['action'] == 'delete') {
         $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
@@ -187,11 +212,19 @@
         }
         $dbStr = "SELECT `ID` FROM `Environment`";
         $result = $db_con->query($dbStr);
+        $gitConfigured = gitConfigured();
+        if (!$gitConfigured) {
+?>
+            <div class="alert alert-danger">
+                <strong>Warning:</strong> You're unable to create an new organization until your git settings are configured in <a href="profile.html">your profile</a>.
+            </div>
+<?php
+        }
 ?>
             <div class="alert alert-info">
                 Creating a new organization
             </div>
-            <form class="panel panel-info" method="POST">
+            <<?php echo ($gitConfigured ? 'form' : 'div'); ?> class="panel panel-info" method="POST">
                 <input type="hidden" name="action" value="add" />
                 <input type="hidden" name="production" value="<?php  echo ($result->num_rows == 0 ? 'true' : 'false' ) ?>" />
                 <div class="panel-heading">
@@ -230,8 +263,8 @@
                         <input type="text" name="token" class="form-control" placeholder="Your security token" required />
                     </div>
                 </div>
-                <input type="submit" id="saveButton" value="Save" class="btn btn-success" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;" />
-            </form>
+                <input type="submit" id="saveButton" value="Save" class="btn btn-success <?php if (!$gitConfigured) { echo 'disabled'; } ?>" style="width: 100%; border-top-left-radius: 0; border-top-right-radius: 0;" />
+            </<?php echo ($gitConfigured ? 'form' : 'div'); ?>>
 <?php
     } else {
         try {
