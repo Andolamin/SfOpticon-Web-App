@@ -41,6 +41,14 @@
                 <strong>Good to go!</strong> This page is fully attached to actual data.
             </div>
             <script type="text/javascript">
+                function filterScheduled() {
+                    var newLocation = window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=4&start=0';
+                    if (typeof getQueryVariable('org') != 'undefined') {
+                        newLocation += '&org=' + getQueryVariable('org');
+                    }
+                    window.location.assign(newLocation);
+                }
+
                 function filterInProgress() {
                     var newLocation = window.location.protocol + '//' + window.location.host + '/' + 'jobs.html?filter=1&start=0';
                     if (typeof getQueryVariable('org') != 'undefined') {
@@ -108,11 +116,12 @@
                         Status <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu" style="width: 100%;">
-                        <li><a href="#" onclick="filterInProgress()">In-progress</a></li>
-                        <li><a href="#" onclick="filterComplete()">Complete</a></li>
-                        <li><a href="#" onclick="filterFailed()">Failed</a></li>
+                        <li><a href="javascript:void(0)" onclick="filterScheduled()">Scheduled</a></li>
+                        <li><a href="javascript:void(0)" onclick="filterInProgress()">In-progress</a></li>
+                        <li><a href="javascript:void(0)" onclick="filterComplete()">Complete</a></li>
+                        <li><a href="javascript:void(0)" onclick="filterFailed()">Failed</a></li>
                         <li class="divider"></li>
-                        <li><a href="#" onclick="filterAll()">All</a></li>
+                        <li><a href="javascript:void(0)" onclick="filterAll()">All</a></li>
                     </ul>
                 </div>
                 <div class="input-group-btn" style="width: 30%">
@@ -142,13 +151,16 @@
     if (isset($_GET['filter'])) {
         switch($_GET['filter']) {
             case 1: // In-progress
-                $filterString = "`Progress` < 100";
+                $filterString = "`Progress` < 100 AND `Status` != 'Scheduled'";
                 break;
             case 2: // Complete
                 $filterString = "`Status` = 'Complete'";
                 break;
             case 3: // Failed
                 $filterString = "`Status` != 'Complete' AND `Progress` = 100";
+                break;
+            case 4: // Scheduled
+                $filterString = "`Progress` < 100 AND `Status` = 'Scheduled'";
                 break;
         }
     }

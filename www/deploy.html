@@ -73,6 +73,7 @@
                     if (dateTimeLoaded) {
                         setUpDateTimePicker();
                         $("#schedulePicker")[0].disabled = false;
+                        $('.submit').removeClass('disabled');
                     }
                     break;
                 default:
@@ -129,7 +130,7 @@
         function targetChanged(inElement) {
             updateDropdownText(inElement);
             $('input[name="Target"]').attr('value', $(inElement).html());
-            $('.scheduleType.now').removeClass('disabled'); // .now until Future is supported. Then we'll activate both buttons
+            $('.scheduleType').removeClass('disabled');
         }
 
         function updateDropdownText(inElement) {
@@ -158,9 +159,9 @@
         <?php include_once(dirname(__FILE__) . '/header.html'); ?>
 
         <div id="page-wrapper">
-            <div class="alert alert-info alert-dismissable">
+            <div class="alert alert-success alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>WIP:</strong> Jobs must be run immediately, schedule functionality is not complete.
+                <strong>Good to go!</strong> This page is fully functional.
             </div>
 <?php
     if (isset($_POST['action']) && $_POST['action'] == 'Scan') {
@@ -205,13 +206,16 @@
                             "--gitPassword=" . $git['GitPassword'] . " " .
                             "--gitFullName=\"" . $git['GitName'] . "\" " .
                             "--gitEmail=" . $git['GitEmail'];
+                        if (isset($_POST['Date']) && $_POST['Date'] != NULL && $_POST['Date'] != '') {
+                            $message .= ' --schedule="' . $_POST['Date'] . '"';
+                        }
                         $message .= "\r\n";
                         socket_write($socket, $message, strlen($message));
                         $out = '';
                         while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
                         if (strpos($out, 'SUCCESS') !== false) {
                             $resultComponents = explode(': ', $out);
-                            auditLog(null, 'Started scan environment job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]);
+                            auditLog(null, 'Started scan environment job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]) . '</a>';
 ?>
             <div class="alert alert-success alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
@@ -289,7 +293,7 @@
                         while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
                         if (strpos($out, 'SUCCESS') !== false) {
                             $resultComponents = explode(': ', $out);
-                            auditLog(null, 'Started deploy job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]);
+                            auditLog(null, 'Started deploy job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]) . '</a>';
 ?>
             <div class="alert alert-success alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
@@ -367,7 +371,7 @@
                         while (($out = trim(socket_read($socket, 2048, PHP_NORMAL_READ))) === '') {}
                         if (strpos($out, 'SUCCESS') !== false) {
                             $resultComponents = explode(': ', $out);
-                            auditLog(null, 'Started deploy job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]);
+                            auditLog(null, 'Started deploy job <a href="job.html?jobId=' . $resultComponents[2] . '">#' . $resultComponents[2]) . '</a>';
 ?>
             <div class="alert alert-success alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
@@ -510,15 +514,5 @@
         <!-- /#page-wrapper -->
     </div>
     <!-- /#wrapper -->
-    <script type="text/javascript">
-        /*
-        $('.input-group.date').datepicker({
-            startDate: '-0d',
-            autoclose: true,
-            todayHighlight: true,
-            todayBtn: 'linked'
-        });
-        */
-    </script>
 </body>
 </html>

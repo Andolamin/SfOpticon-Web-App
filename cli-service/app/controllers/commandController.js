@@ -2,6 +2,7 @@
  * Created by Alan on 6/11/2014.
  */
 var mysql = require('mysql');
+var schedule = require('node-schedule');
 
 function CommandController() {
     this.paramDefinition = {
@@ -38,15 +39,17 @@ function CommandController() {
     this.connection = null;
     this.jobId = null;
     this.commandType = '';
+    this.args = null;
 }
 
 CommandController.prototype.handleCommand = function handleCommand(socket, args) {
     this.socket = socket;
+    this.args = args;
     this.params = require('../libs/parameterHelper.js').parametersFromArguments(args.slice(2));
     console.log('(' + this.socket.key + '): Executing command: ' + this.params);
 
     // Create job record in DB
-    var settings = require('../settings.js');
+    var settings = require('../../settings.js');
     this.connection = mysql.createConnection({
         host     : settings.mysqlHost,
         user     : settings.mysqlUsername,
@@ -54,7 +57,7 @@ CommandController.prototype.handleCommand = function handleCommand(socket, args)
     });
     this.connection.connect();
     this.connection.query('USE ' + settings.mysqlDB);
-    this.connection.query("INSERT INTO `Job` (`Status`, `Progress`, `StartTime`, `Type`) VALUES ('Received', '0.00', NOW(6), '" + this.commandType + "');",
+    this.connection.query("INSERT INTO `Job` (`Status`, `Progress`, `ReceivedTime`, `Type`) VALUES ('Received', '0.00', NOW(6), '" + this.commandType + "');",
         function (err, result) {
             if (err) {
                 console.log('(' + this.socket.key + '): MySQL error: ' + err.message);
@@ -97,8 +100,20 @@ CommandController.prototype.startOrScheduleJob = function startOrScheduleJob() {
     if (typeof this.params.get('schedule') == 'undefined') {
         this.handleJob();
     } else {
-        // TODO: schedule the job
-        this.connection.query("UPDATE `Job` SET `Progress` = 100, `Status` = 'Failed: Scheduled Jobs not yet supported' WHERE `ID` = " + this.jobId);
+        // Schedule the job
+        this.connection.query("INSERT INTO `CronTable` (`ScheduleTime`, `Parameters`, `JobID`) VALUES (?, ?, ?)",
+            [this.params.get('schedule'), JSON.stringify(this.args), this.jobId],
+            function() {
+                schedule.scheduleJob(new Date(Date.parse(this.params.get('schedule'))), function (inJobId) {
+                    return function () {
+                        var ScheduledExecutionHelper = require('../libs/scheduledExecutionHelper.js');
+                        new ScheduledExecutionHelper().execute(inJobId);
+                    }
+                }(this.jobId));
+            }.bind(this));
+
+        this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", 'Scheduled', NOW(6));");
+        this.connection.query("UPDATE `Job` SET `Progress` = 0, `Status` = 'Scheduled' WHERE `ID` = " + this.jobId);
     }
 };
 
@@ -117,6 +132,9 @@ CommandController.prototype.handleSfOpticonData = function handleSfOpticonData(d
                 // Found our trigger
                 this.connection.query("INSERT INTO `JobLog` (`JobID`, `Value`, `Time`) VALUE (" + this.jobId + ", '" + this.progressDef[progress].message + "', NOW(6));");
                 this.connection.query("UPDATE `Job` SET `Progress` = " + this.progressDef[progress].progress + ", `Status` = '" + this.progressDef[progress].message + "' WHERE `ID` = " + this.jobId);
+                if (this.progressDef[progress].message == 'Started') {
+                    this.connection.query("UPDATE `Job` SET `StartTime` = NOW(6) WHERE `ID` = " + this.jobId);
+                }
                 this.lastProgress = progress;
                 // console.log('New progress: ' + this.lastProgress);
                 break;

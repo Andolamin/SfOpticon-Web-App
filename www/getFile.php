@@ -7,7 +7,7 @@
     require_once("functions.php");
 
     if (verifyLogin("account/enterprise.wsdl.xml") == false) {
-        header( 'Location: http://' . $_SERVER['HTTP_HOST'] . '/account/account.php?return=' . $_GET['fn']);
+        header( 'Location: ' . (isset($_SERVER['HTTPS']) && strlen($_SERVER['HTTPS']) > 0 ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . '/account/account.php?return=' . $_GET['fn']);
     }
 
     if (isset($_GET['fn'])) {

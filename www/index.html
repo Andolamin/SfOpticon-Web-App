@@ -1,5 +1,30 @@
 <?php
     $root = 'index.html';
+
+    try {
+        $db_con = connectDBi();
+    } catch (Exception $e) {
+        if ($e->getMessage() == "100") {
+            $error = mysql_error();
+            die("Error connecting to the database");
+        } else if ($e->getMessage() == "101") {
+            $error = mysql_error();
+            die("Error selecting the database");
+        }
+    }
+
+    $dbStr = "(SELECT COUNT(`ID`) as `Count`, 'In-progress' as `State` FROM `Job` WHERE `Progress` < 100 AND `Status` != 'Scheduled') " .
+             "UNION (SELECT COUNT(`ID`) as `Count`, 'Scheduled' as `State` FROM `Job` WHERE `Progress` < 100 AND `Status` = 'Scheduled') " .
+             "UNION (SELECT COUNT(`ID`) as `Count`, 'Complete' as `State` FROM `Job` WHERE `Progress` = 100 AND `Status` = 'Complete') UNION " .
+             "(SELECT COUNT(`ID`) as `Count`, 'Failed' as `State` FROM `Job` WHERE `Progress` = 100 AND `Status` != 'Complete')";
+    $result = $db_con->query($dbStr);
+    $count = array();
+    while ($row = $result->fetch_assoc()) {
+        $count[$row['State']] = $row['Count'];
+    }
+
+    $dbStr = "SELECT (`LastModified` - `StartTime`) as `Duration` FROM `Job` WHERE 1 ORDER BY `StartTime` ASC";
+    $result = $db_con->query($dbStr);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,16 +37,39 @@
     <link rel="stylesheet" type="text/css" href="http://www.shieldui.com/shared/components/latest/css/light-bootstrap/all.min.css" />
     <script type="text/javascript" src="http://www.shieldui.com/shared/components/latest/js/shieldui-all.min.js"></script>
     <script type="text/javascript" src="http://www.prepbootstrap.com/Content/js/gridData.js"></script>
+    <script type="text/javascript" src="plugins/canvasjs/canvasjs.min.js"></script>
+    <script type="text/javascript">
+        $(function() {
+            var chart = new CanvasJS.Chart("durationContainer", {
+                data: [
+                    {
+                        type: "line",
+                        dataPoints: [
+<?php
+    $x = 0;
+    while ($row = $result->fetch_assoc()) {
+        $x++;
+        echo ($x > 1 ? ", " : "") . "{ x: " . $x . ", y: " . $row['Duration'] . '}';
+    }
+?>
+                        ]
+                    }
+                ]
+            });
+            chart.render();
+        });
+    </script>
+    <style>
+        .canvasjs-chart-credit {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div id="wrapper">
         <?php include_once(dirname(__FILE__) . '/header.html'); ?>
 
         <div id="page-wrapper">
-            <div class="alert alert-danger alert-dismissable">
-                <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-                <strong>Mockup:</strong> This page is not yet attached to actual data.
-            </div>
             <div class="alert alert-success alert-dismissable">
                 <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
                 Welcome to the admin dashboard! Feel free to review all pages and modify the layout to your needs.
@@ -31,43 +79,43 @@
                 <div class="col-lg-3">
                     <div class="panel panel-primary">
                         <div class="panel-heading">
-                            <h3 class="panel-title"><i class="fa fa-clock-o"></i>Alerts</h3>
+                            <h3 class="panel-title"><i class="fa fa-clock-o" style="margin-right: 5px"></i>Jobs</h3>
                         </div>
-                        <div class="panel-body">
-                            <div class="row alert-success">
-                                <div class="col-xs-5">
-                                    <i class="fa fa-thumbs-o-up fa-5x"></i>
+                        <div class="panel-body" style="padding: 0 15px 15px 15px;">
+                            <div class="row">
+                                <div class="col-xs-6">
+                                    <i class="fa fa-calendar fa-5x" style="margin-top: 20px"></i>
                                 </div>
-                                <div class="col-xs-5 text-right">
-                                    <p class="alerts-heading">343</p>
-                                    <p class="alerts-text">New Orders</p>
-                                </div>
-                            </div>
-                            <div class="row alert-success">
-                                <div class="col-xs-5">
-                                    <i class="fa fa-thumbs-o-up fa-5x"></i>
-                                </div>
-                                <div class="col-xs-5 text-right">
-                                    <p class="alerts-heading">1256</p>
-                                    <p class="alerts-text">Registrations</p>
+                                <div class="col-xs-6 text-right">
+                                    <p class="alerts-heading"><?php echo $count['Scheduled']; ?></p>
+                                    <p class="alerts-text">Scheduled</p>
                                 </div>
                             </div>
-                            <div class="row alert-danger">
-                                <div class="col-xs-5">
-                                    <i class="fa fa-thumbs-o-down fa-5x"></i>
+                            <div class="row">
+                                <div class="col-xs-6">
+                                    <i class="fa fa-clock-o fa-5x" style="margin-top: 20px"></i>
                                 </div>
-                                <div class="col-xs-5 text-right">
-                                    <p class="alerts-heading">4</p>
-                                    <p class="alerts-text">Errors</p>
+                                <div class="col-xs-6 text-right">
+                                    <p class="alerts-heading"><?php echo $count['In-progress']; ?></p>
+                                    <p class="alerts-text">In-progres</p>
                                 </div>
                             </div>
-                            <div class="row alert-success">
-                                <div class="col-xs-5">
-                                    <i class="fa fa-thumbs-o-up fa-5x"></i>
+                            <div class="row">
+                                <div class="col-xs-6">
+                                    <i class="fa fa-thumbs-o-up fa-5x" style="margin-top: 20px"></i>
                                 </div>
-                                <div class="col-xs-5 text-right">
-                                    <p class="alerts-heading">11</p>
-                                    <p class="alerts-text">Mentions</p>
+                                <div class="col-xs-6 text-right">
+                                    <p class="alerts-heading"><?php echo $count['Complete']; ?></p>
+                                    <p class="alerts-text">Completed</p>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-xs-6">
+                                    <i class="fa fa-thumbs-o-down fa-5x" style="margin-top: 20px"></i>
+                                </div>
+                                <div class="col-xs-6 text-right">
+                                    <p class="alerts-heading"><?php echo $count['Failed']; ?></p>
+                                    <p class="alerts-text">Failed</p>
                                 </div>
                             </div>
                         </div>
@@ -76,54 +124,11 @@
                 <div class="col-lg-9">
                     <div class="panel panel-primary">
                         <div class="panel-heading">
-                            <h3 class="panel-title"><i class="fa fa-bar-chart-o"></i> Traffic Estimations for last 30 days</h3>
+                            <h3 class="panel-title"><i class="fa fa-bar-chart-o"></i> Job Duration</h3>
                         </div>
                         <div class="panel-body">
-                            <div id="shieldui-chart1"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-lg-4">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            <h3 class="panel-title"><i class="fa fa-bar-chart-o"></i> Logins per week</h3>
-                        </div>
-                        <div class="panel-body">
-                            <div id="shieldui-chart2"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            <h3 class="panel-title"><i class="fa fa-bar-chart-o"></i> Budget</h3>
-                        </div>
-                        <div class="panel-body">
-                            <div id="shieldui-chart3"></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-4">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            <h3 class="panel-title"><i class="fa fa-bar-chart-o"></i> Purchases</h3>
-                        </div>
-                        <div class="panel-body">
-                            <div id="shieldui-chart4"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-lg-12">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            <h3 class="panel-title"><i class="fa fa-bar-chart-o"></i> Sales personnel Data</h3>
-                        </div>
-                        <div class="panel-body">
-                            <div id="shieldui-grid1"></div>
+                            <div id="durationContainer" style="height: 349px; width: 100%;">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -132,103 +137,5 @@
         <!-- /#page-wrapper -->
     </div>
     <!-- /#wrapper -->
-
-    <!--
-            This section initializes the chart widgets and a grid component,
-            which visualize records and allow sorting and paging.
-            For more information visit:
-            http://www.shieldui.com/documentation/javascript.chart/getting.started
-            http://www.shieldui.com/documentation/grid/javascript/getting.started
-            http://www.shieldui.com/documentation/datasource/javascript/getting.started
-        -->
-    <script type="text/javascript">
-        jQuery(function ($) {
-            var performance = [12, 43, 34, 22, 12, 33, 4, 17, 22, 34, 54, 67],
-                    visits = [123, 323, 443, 32],
-                    budget = [23, 19, 11, 134, 242, 352, 435, 22, 637, 445, 555, 57],
-                    sales = [11, 9, 31, 34, 42, 52, 35, 22, 37, 45, 55, 57];
-
-            $("#shieldui-chart1").shieldChart({
-                primaryHeader: {
-                    text: "Visitors"
-                },
-                exportOptions: {
-                    image: false,
-                    print: false
-                },
-                dataSeries: [{
-                    seriesType: "area",
-                    collectionAlias: "Q Data",
-                    data: performance
-                }]
-            });
-
-            $("#shieldui-chart2").shieldChart({
-                primaryHeader: {
-                    text: "Logins Per week"
-                },
-                exportOptions: {
-                    image: false,
-                    print: false
-                },
-                seriesSettings: {
-                    donut: {
-                        enablePointSelection: true
-                    }
-                },
-                dataSeries: [{
-                    seriesType: "donut",
-                    collectionAlias: "logins",
-                    data: visits
-                }]
-            });
-
-            $("#shieldui-chart3").shieldChart({
-                primaryHeader: {
-                    text: "Budget"
-                },
-                dataSeries: [{
-                    seriesType: "line",
-                    collectionAlias: "Budget",
-                    data: budget
-                }]
-            });
-
-            $("#shieldui-chart4").shieldChart({
-                primaryHeader: {
-                    text: "Sales"
-                },
-                dataSeries: [{
-                    seriesType: "bar",
-                    collectionAlias: "sales",
-                    data: sales
-                }]
-            });
-
-            $("#shieldui-grid1").shieldGrid({
-                dataSource: {
-                    data: gridData
-                },
-                sorting: {
-                    multiple: true
-                },
-                paging: {
-                    pageSize: 12,
-                    pageLinksCount: 4
-                },
-                selection: {
-                    type: "row",
-                    multiple: true,
-                    toggle: false
-                },
-                columns: [
-                    { field: "id", width: "70px", title: "ID" },
-                    { field: "name", title: "Person Name" },
-                    { field: "company", title: "Company Name" },
-                    { field: "email", title: "Email Address", width: "270px" }
-                ]
-            });
-        });
-    </script>
 </body>
 </html>

@@ -49,7 +49,7 @@
 				<p style="color:green">Success! You will be redirected to your previous location in 2 seconds.</p>
 				<script type="text/javascript">
 					setTimeout(function() {
-						window.location = '<?php echo "http://" . $_SERVER['HTTP_HOST'] . "/" . $_GET['return']; ?>';
+						window.location = '<?php echo (isset($_SERVER['HTTPS']) && strlen($_SERVER['HTTPS']) > 0 ? 'https' : 'http') . "://" . $_SERVER['HTTP_HOST'] . "/" . $_GET['return']; ?>';
 					}, 2000);
 				</script>
 				<?php

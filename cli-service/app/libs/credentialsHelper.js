@@ -6,7 +6,7 @@ var mysql = require('mysql');
 function CredentialsHelper() {}
 
 CredentialsHelper.prototype.connectDB = function connectDB() {
-    var settings = require('../settings.js');
+    var settings = require('../../settings.js');
     this.connection = mysql.createConnection({
         host     : settings.mysqlHost,
         user     : settings.mysqlUsername,

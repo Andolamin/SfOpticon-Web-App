@@ -7,6 +7,9 @@ var socketController = require('./app/controllers/socketController.js');
 var HashMap = require('hashmap').HashMap;
 var exit = require('exit');
 var errno = require('errno');
+var settings = require('./settings.js');
+var mysql = require('mysql');
+var schedule = require('node-schedule');
 
 // Properties
 var statusCodes = {
@@ -70,4 +73,24 @@ server.on('error', function(err) {
 // Bind server to port
 server.listen(portNumber, function() {
     console.log('Server Bound to ' + portNumber);
+});
+
+// Restart any scheduled jobs
+this.connection = mysql.createConnection({
+    host     : settings.mysqlHost,
+    user     : settings.mysqlUsername,
+    password : settings.mysqlPassword
+});
+this.connection.connect();
+this.connection.query('USE ' + settings.mysqlDB);
+this.connection.query('SELECT `JobID`, `ScheduleTime` FROM `CronTable` WHERE `Executed` = 0', function(err, rows, fields) {
+    for (var i = 0; i < rows.length; i++) {
+        console.log('Rescheduling job #' + rows[i]['JobID']);
+        schedule.scheduleJob(new Date(Date.parse(rows[i]['ScheduleTime'])), function (inJobId) {
+            return function () {
+                var ScheduledExecutionHelper = require('./app/libs/scheduledExecutionHelper.js');
+                new ScheduledExecutionHelper().execute(inJobId);
+            }
+        }(rows[i]['JobID']));
+    }
 });

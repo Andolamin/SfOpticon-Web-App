@@ -6,7 +6,7 @@ var fs = require('fs');
 function ConfigurationHelper() {};
 
 ConfigurationHelper.prototype.setGithubCredentials = function setGithubCredentials(inUsername, inPassword) {
-    var settings = require('../settings.js');
+    var settings = require('../../settings.js');
     fs.readFile(settings.sfOpticonRoot + 'application.yml', 'utf8', function (err,data) {
         if (err) {
             return console.log(err);
