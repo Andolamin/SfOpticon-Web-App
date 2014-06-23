@@ -11,7 +11,7 @@ database:
   database: sfopticon
   socket:
   username: root
-  password: 
+  password: B:D>hx=E>bz!42ZbZy/Z
   flags:
 
 scm:
@@ -24,15 +24,15 @@ scm:
     description:
     homepage:
     private: true
-    has_issues:
-    has_wiki:
-    has_downloads:
-    organization:
-    team_id:
+    has_issues: false
+    has_wiki: false
+    has_downloads: false
+    organization: 
+    team_id: 695667
     gitignore_template:
 
 logging:
-  logdev: STDERR
+  logdev: STDOUT
   level: DEBUG
   shift_age: 10
   shift_size: 1048576
@@ -40,45 +40,37 @@ logging:
 
 # Set "test" to true, to allow logging into test.salesforce.com for your "production" env
 salesforce:
+  force_change: # These types are actually groups of types. For now assume that they've changed when doing modification detection
+    - CustomObject
+    - CustomLabels
+    - Workflow
   metadata_types:
+    - CustomObject
+    - Profile
     - ApexClass
+    - ApexTrigger
     - ApexComponent
     - ApexPage
-    - ApexTrigger
-#    - ApprovalProcess
-#    - AssignmentRules
-#    - AutoResponseRules
-#    - CallCenter
-#    - CompactLayout
-#    - ConnectedApp
-#    - CustomApplication
-#    - CustomApplicationComponent
-#    - CustomLabels
-#    - CustomObject
-#    - CustomObjectTranslation
-#    - CustomPageWebLink
-#    - CustomSite
-#    - CustomTab
-#    - DataCategoryGroup
-#    - FieldSet
-#    - FlexiPage
-#    - Flow
-#    - Group
-#    - HomePageComponent
-#    - HomePageLayout
-#    - InstalledPackage
-#    - Layout
-#    - PermissionSet
-#    - PostTemplate
-#    - Profile
-#    - Queue
-#    - QuickAction
-#    - RecordType
-#    - RemoteSiteSetting
-#    - ReportType
-#    - Role
-#    - SamlSsoConfig
-#    - Scontrol
-#    - StaticResource
-#    - Workflow
-
+    - Layout
+    - CustomTab
+    - CustomApplication
+    - CustomPageWebLink
+    - Workflow
+    - EmailTemplate
+    - PermissionSet
+    - ReportType
+    - Report
+    - Dashboard
+    - StaticResource
+    - CustomLabels
+    - Document
+    - Portal
+    - CustomSite
+    - RemoteSiteSetting
+    - HomePageLayout
+    - HomePageComponent
+    - Scontrol
+    - Letterhead
+    - AnalyticSnapshot
+    - DataCategoryGroup
+    - CustomObjectTranslation

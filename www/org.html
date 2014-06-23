@@ -269,11 +269,11 @@
                         <input type="text" name="location" class="form-control" placeholder="e.g. login.petroskills.com" required />
                     </div>
                 </div>
-                <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;" data-toggle="collapse" data-parent="#accordion" href="#credentialsList">Credentials</button>
+                <div class="btn btn-default" style="width: 100%; border-radius: 0;">Credentials</div>
                 <div id="credentialsList" class="list-group panel-collapse">
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 95px;">Username</span>
-                        <input type="text" name="username" class="form-control" placeholder="e.g. your email" required />
+                        <input type="email" name="username" class="form-control" placeholder="e.g. your email" required />
                     </div>
                     <div class="input-group">
                         <span class="input-group-addon" style="min-width: 95px;">Password</span>
@@ -386,11 +386,11 @@
                             <input type="text" name="location" class="form-control" placeholder="e.g. login.petroskills.com" readonly disabled value="<?php echo $row['Location']; ?>" data-locked>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-default" style="width: 100%; border-radius: 0;">Credentials</button>
+                    <div class="btn btn-default" style="width: 100%; border-radius: 0;">Credentials</div>
                     <div id="credentialsList" class="list-group panel-collapse">
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 95px;">Username</span>
-                            <input type="text" name="username" class="form-control" placeholder="e.g. your email" readonly value="<?php echo $row['Username']; ?>" data-original-value="<?php echo $row['Username']; ?>">
+                            <input type="email" name="username" class="form-control" placeholder="e.g. your email" readonly value="<?php echo $row['Username']; ?>" data-original-value="<?php echo $row['Username']; ?>">
                         </div>
                         <div class="input-group">
                             <span class="input-group-addon" style="min-width: 95px;">Password</span>

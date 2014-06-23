@@ -23,7 +23,7 @@
         $count[$row['State']] = $row['Count'];
     }
 
-    $dbStr = "SELECT (`LastModified` - `StartTime`) as `Duration` FROM `Job` WHERE 1 ORDER BY `StartTime` ASC";
+    $dbStr = "SELECT (`LastModified` - `StartTime`) as `Duration` FROM `Job` WHERE `Type` = 'Merge Environment' OR `Type` = 'Rebase Environment' ORDER BY `StartTime` ASC";
     $result = $db_con->query($dbStr);
 ?>
 <!DOCTYPE html>

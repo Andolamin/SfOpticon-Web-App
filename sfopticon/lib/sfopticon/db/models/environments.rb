@@ -225,7 +225,7 @@ class SfOpticon::Environment < ActiveRecord::Base
     change_queue.apply_change_queue(dir, branch.local_path) do |change|
       log.info { "DIFF: #{change.change_type} - #{change.sf_object[:full_name]}" }
 
-      commit_message = "#{change.change_type} - #{change.sf_object[:full_name]}\n\n"
+      commit_message = "#{change.sf_object[:full_name]}\n\n"
       if change.change_type == :deletion
         commit_message += "#{change.sf_object[:file_name]} deleted"
       else
@@ -240,10 +240,10 @@ class SfOpticon::Environment < ActiveRecord::Base
 
       case change.change_type
       when :deletion
-        sf_objects.find_by_sfobject_id(change.sf_object[:sfobject_id]).delete
+        sf_objects.find_by_file_name(change.sf_object[:file_name]).delete
       when :modification
         sf_objects
-        .find_by_sfobject_id(change.sf_object[:sfobject_id])
+        .find_by_file_name(change.sf_object[:file_name])
         .clobber(change.sf_object)
       when :addition
         sf_objects << sf_objects.new(change.sf_object)
