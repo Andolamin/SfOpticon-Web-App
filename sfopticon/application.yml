@@ -11,7 +11,7 @@ database:
   database: sfopticon
   socket:
   username: root
-  password: B:D>hx=E>bz!42ZbZy/Z
+  password: 
   flags:
 
 scm:
@@ -28,7 +28,7 @@ scm:
     has_wiki: false
     has_downloads: false
     organization: 
-    team_id: 695667
+    team_id: 
     gitignore_template:
 
 logging:

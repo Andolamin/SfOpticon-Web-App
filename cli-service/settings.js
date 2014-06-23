@@ -4,8 +4,8 @@
 
 // MySQL settings
 exports.mysqlHost = 'localhost';
-exports.mysqlUsername = 'root';
-exports.mysqlPassword = 'B:D>hx=E>bz!42ZbZy/Z';
+exports.mysqlUsername = '';
+exports.mysqlPassword = '';
 exports.mysqlDB = 'CLIService';
 exports.serviceDB = 'sfopticon';
 exports.sfOpticonRoot = '/sfopticon/';
