@@ -10,7 +10,7 @@ database:
   port: 5432
   database: sfopticon
   socket:
-  username: root
+  username: 
   password: 
   flags:
 
