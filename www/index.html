@@ -23,7 +23,16 @@
         $count[$row['State']] = $row['Count'];
     }
 
-    $dbStr = "SELECT (`LastModified` - `StartTime`) as `Duration` FROM `Job` WHERE `Type` = 'Merge Environment' OR `Type` = 'Rebase Environment' ORDER BY `StartTime` ASC";
+    $filterString = "`Type` = 'Merge Environment' OR `Type` = 'Rebase Environment'";
+    $filterName = 'Deployments';
+    if (isset($_GET['filter']) && $_GET['filter'] == 0) {
+        $filterString = "1";
+        $filterName = 'All';
+    } else if (isset($_GET['filter']) && $_GET['filter'] == 0) {
+        $filterString = "`Type` = 'Merge Environment' OR `Type` = 'Rebase Environment'";
+        $filterName = 'Deployments';
+    }
+    $dbStr = "SELECT (`LastModified` - `StartTime`) as `Duration` FROM `Job` WHERE " . $filterString . " ORDER BY `StartTime` ASC";
     $result = $db_con->query($dbStr);
 ?>
 <!DOCTYPE html>
@@ -43,7 +52,7 @@
             var chart = new CanvasJS.Chart("durationContainer", {
                 data: [
                     {
-                        type: "line",
+                        type: "spline",
                         dataPoints: [
 <?php
     $x = 0;
@@ -123,8 +132,19 @@
                 </div>
                 <div class="col-lg-9">
                     <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            <h3 class="panel-title"><i class="fa fa-bar-chart-o"></i> Job Duration</h3>
+                        <div class="panel-heading clearfix">
+                            <i class="fa fa-bar-chart-o"></i> Job Duration
+                            <!-- Single button -->
+                            <div class="btn-group" style="float: right; margin: -10px -15px; width: 175px;">
+                                <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" style="height: 40px; width: 100%;">
+                                    <?php echo $filterName; ?> <span class="caret"></span>
+                                </button>
+                                <ul class="dropdown-menu" role="menu" style="width: 100%;">
+                                    <li><a href="?filter=1">Deployments</a></li>
+                                    <li class="divider"></li>
+                                    <li><a href="?filter=0">All</a></li>
+                                </ul>
+                            </div>
                         </div>
                         <div class="panel-body">
                             <div id="durationContainer" style="height: 349px; width: 100%;">

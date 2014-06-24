@@ -9,4 +9,5 @@ exports.mysqlPassword = '';
 exports.mysqlDB = 'CLIService';
 exports.serviceDB = 'sfopticon';
 exports.sfOpticonRoot = '/sfopticon/';
+exports.githubOrganization = '';
 

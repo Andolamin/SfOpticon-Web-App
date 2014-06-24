@@ -112,8 +112,10 @@ DeleteEnvironmentController.prototype.handleJob = function handleJob() {
                     username: this.params.get('gitUsername'),
                     password: this.params.get('gitPassword')
                 });
+                var settings = require('../../settings.js');
+
                 github.repos.delete({
-                    'user': this.params.get('gitUsername'),
+                    'user': (settings.githubOrganization != '' ? settings.githubOrganization : this.params.get('gitUsername')),
                     'repo': this.params.get('name')
                 }, function(err) {
                     console.log(err);
