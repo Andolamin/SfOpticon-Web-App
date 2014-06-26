@@ -101,7 +101,6 @@
 			- set mysql password (picked during LAMP install)
 		- Set up git
 			- sudo git config --global http.sslverify false
-			- 
 	- Install dependencies
 		- sudo apt-get update
 		- sudo apt-get install ruby
